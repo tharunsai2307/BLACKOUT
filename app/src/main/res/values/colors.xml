@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backgrounds (Deep Tactical Charcoal / Navy) -->
+    <color name="bg_dark">#0A0E17</color>
+    <color name="bg_surface">#121824</color>
+    <color name="bg_surface_elevated">#1A2332</color>
+    <color name="bg_surface_subtle">#0F141E</color>
+    <color name="bg_bottom_nav">#0D121C</color>
+
+    <!-- Borders & Dividers -->
+    <color name="border_subtle">#222D3E</color>
+    <color name="border_highlight">#33435C</color>
+    <color name="divider_color">#1C2533</color>
+
+    <!-- Typography -->
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_muted">#64748B</color>
+    <color name="text_disabled">#475569</color>
+
+    <!-- Emergency Red Palette -->
+    <color name="emergency_red">#EF4444</color>
+    <color name="emergency_red_dark">#B91C1C</color>
+    <color name="emergency_red_light">#F87171</color>
+    <color name="emergency_red_subtle">#2D1114</color>
+    <color name="emergency_red_glow">#45151B</color>
+
+    <!-- Tactical Cyan / Teal (Connectivity & Radio) -->
+    <color name="teal_accent">#00E5FF</color>
+    <color name="teal_secondary">#06B6D4</color>
+    <color name="teal_dark">#0E7490</color>
+    <color name="teal_subtle">#082730</color>
+    <color name="teal_glow">#0C3844</color>
+
+    <!-- Status Alert Colors -->
+    <color name="status_warning">#F59E0B</color>
+    <color name="status_warning_subtle">#2C1F08</color>
+    <color name="status_success">#10B981</color>
+    <color name="status_success_subtle">#07261A</color>
+    <color name="status_offline">#94A3B8</color>
+    <color name="status_offline_subtle">#1A2230</color>
+
+    <!-- Priority Badge Colors -->
+    <color name="priority_critical">#EF4444</color>
+    <color name="priority_high">#F97316</color>
+    <color name="priority_medium">#F59E0B</color>
+    <color name="priority_low">#06B6D4</color>
+
+    <!-- General Helpers -->
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
+    <color name="ripple_dark">#33FFFFFF</color>
+    <color name="ripple_emergency">#44EF4444</color>
+    <color name="ripple_teal">#4400E5FF</color>
+</resources>

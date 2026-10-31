@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/spacing_large"
+    android:paddingTop="@dimen/spacing_large"
+    android:paddingEnd="@dimen/spacing_large">
+
+    <!-- Screen Title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/history_screen_title"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_size_headline"
+        android:textStyle="bold" />
+
+    <!-- Filter Chips Horizontal Scroll for Category Filters -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_medium"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_history_filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleLine="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_all"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:text="@string/history_filter_all"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_medical"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_medical"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_accident"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_road_accident"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_trapped"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_trapped"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_flood"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_flood"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_fire"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_fire"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_disaster"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_disaster"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_personal_safety"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_personal_safety"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_filter_other"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sos_category_other"
+                android:textColor="@color/text_primary"
+                app:chipBackgroundColor="@drawable/bg_chip_category" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+    </HorizontalScrollView>
+
+    <!-- Main Content Frame -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="@dimen/spacing_medium">
+
+        <!-- RecyclerView for Emergency Messages -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_messages"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="@dimen/spacing_xxxlarge"
+            android:visibility="gone" />
+
+        <!-- Empty State Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/layout_history_empty"
+            style="@style/Widget.BLACKOUT.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_xxlarge">
+
+                <ImageView
+                    android:layout_width="@dimen/icon_size_hero"
+                    android:layout_height="@dimen/icon_size_hero"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_nav_history"
+                    app:tint="@color/text_muted" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_medium"
+                    android:text="@string/history_empty_title"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_size_subtitle"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:gravity="center"
+                    android:lineSpacingExtra="3dp"
+                    android:maxWidth="300dp"
+                    android:text="@string/history_empty_desc"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_size_body" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </FrameLayout>
+
+</LinearLayout>

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base Application Theme: Dark-First Tactical Emergency Style -->
+    <style name="Theme.BLACKOUT" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">@color/teal_accent</item>
+        <item name="colorPrimaryVariant">@color/teal_dark</item>
+        <item name="colorOnPrimary">@color/bg_dark</item>
+
+        <!-- Secondary (Emergency Red) -->
+        <item name="colorSecondary">@color/emergency_red</item>
+        <item name="colorSecondaryVariant">@color/emergency_red_dark</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <!-- Surface & Background -->
+        <item name="android:windowBackground">@color/bg_dark</item>
+        <item name="android:colorBackground">@color/bg_dark</item>
+        <item name="colorSurface">@color/bg_surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+
+        <!-- System Bars -->
+        <item name="android:statusBarColor">@color/bg_dark</item>
+        <item name="android:navigationBarColor">@color/bg_bottom_nav</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+
+        <!-- Typography Defaults -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+    </style>
+
+    <!-- Custom Button Styles -->
+    <style name="Widget.BLACKOUT.Button.Primary" parent="Widget.MaterialComponents.Button">
+        <item name="android:backgroundTint">@color/teal_accent</item>
+        <item name="android:textColor">@color/bg_dark</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">@dimen/text_size_body</item>
+        <item name="cornerRadius">@dimen/button_corner_radius</item>
+        <item name="android:minHeight">@dimen/button_height_primary</item>
+        <item name="android:letterSpacing">0.05</item>
+        <item name="rippleColor">@color/ripple_dark</item>
+    </style>
+
+    <style name="Widget.BLACKOUT.Button.Emergency" parent="Widget.MaterialComponents.Button">
+        <item name="android:backgroundTint">@color/emergency_red</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">@dimen/text_size_subtitle</item>
+        <item name="cornerRadius">@dimen/button_corner_radius</item>
+        <item name="android:minHeight">@dimen/sos_button_height</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="rippleColor">@color/ripple_emergency</item>
+    </style>
+
+    <style name="Widget.BLACKOUT.Button.Secondary" parent="Widget.MaterialComponents.Button">
+        <item name="android:backgroundTint">@color/bg_surface_elevated</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">@dimen/text_size_body</item>
+        <item name="cornerRadius">@dimen/button_corner_radius</item>
+        <item name="android:minHeight">@dimen/button_height_secondary</item>
+        <item name="strokeColor">@color/border_subtle</item>
+        <item name="strokeWidth">@dimen/card_border_width</item>
+        <item name="rippleColor">@color/ripple_dark</item>
+    </style>
+
+    <style name="Widget.BLACKOUT.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textColor">@color/teal_accent</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">@dimen/text_size_body</item>
+        <item name="cornerRadius">@dimen/button_corner_radius</item>
+        <item name="android:minHeight">@dimen/button_height_secondary</item>
+        <item name="strokeColor">@color/teal_accent</item>
+        <item name="strokeWidth">@dimen/card_border_width</item>
+        <item name="rippleColor">@color/ripple_teal</item>
+    </style>
+
+    <!-- Custom Card Style -->
+    <style name="Widget.BLACKOUT.Card" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/bg_surface</item>
+        <item name="cardCornerRadius">@dimen/card_corner_radius</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">@color/border_subtle</item>
+        <item name="strokeWidth">@dimen/card_border_width</item>
+    </style>
+
+    <style name="Widget.BLACKOUT.Card.Emergency" parent="Widget.BLACKOUT.Card">
+        <item name="cardBackgroundColor">@color/emergency_red_subtle</item>
+        <item name="strokeColor">@color/emergency_red</item>
+        <item name="strokeWidth">@dimen/card_border_width_thick</item>
+    </style>
+
+    <style name="Widget.BLACKOUT.Card.Teal" parent="Widget.BLACKOUT.Card">
+        <item name="cardBackgroundColor">@color/teal_subtle</item>
+        <item name="strokeColor">@color/teal_accent</item>
+        <item name="strokeWidth">@dimen/card_border_width</item>
+    </style>
+
+    <!-- TextInput Style -->
+    <style name="Widget.BLACKOUT.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/teal_accent</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeWidthFocused">1.5dp</item>
+        <item name="boxBackgroundColor">@color/bg_surface_subtle</item>
+        <item name="boxCornerRadiusTopStart">@dimen/button_corner_radius</item>
+        <item name="boxCornerRadiusTopEnd">@dimen/button_corner_radius</item>
+        <item name="boxCornerRadiusBottomStart">@dimen/button_corner_radius</item>
+        <item name="boxCornerRadiusBottomEnd">@dimen/button_corner_radius</item>
+        <item name="hintTextColor">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_muted</item>
+    </style>
+
+    <!-- Bottom Navigation Style -->
+    <style name="Widget.BLACKOUT.BottomNav" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="android:background">@color/bg_bottom_nav</item>
+        <item name="elevation">8dp</item>
+        <item name="itemIconTint">@color/nav_item_color_selector</item>
+        <item name="itemTextColor">@color/nav_item_color_selector</item>
+        <item name="itemRippleColor">@color/ripple_teal</item>
+        <item name="labelVisibilityMode">labeled</item>
+    </style>
+
+</resources>

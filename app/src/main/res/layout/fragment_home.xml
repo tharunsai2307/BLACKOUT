@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="@dimen/spacing_large"
+        android:paddingTop="@dimen/spacing_large"
+        android:paddingEnd="@dimen/spacing_large"
+        android:paddingBottom="@dimen/spacing_xxxlarge">
+
+        <!-- Top Header: Logo, App Name, Tagline & Architecture Badge -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_blackout_logo" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_medium"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.08"
+                    android:text="@string/app_name"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_size_headline"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_tagline"
+                    android:textColor="@color/text_muted"
+                    android:textSize="@dimen/text_size_caption" />
+
+            </LinearLayout>
+
+            <!-- Status Architecture Pill -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_teal"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="@dimen/spacing_xsmall"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="@dimen/spacing_xsmall"
+                android:text="@string/badge_offline_ready"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Connection Status Section Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_home_network_status"
+            style="@style/Widget.BLACKOUT.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_large">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_large">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <!-- Disconnected / Standby Indicator Dot -->
+                    <View
+                        android:id="@+id/view_home_status_dot"
+                        android:layout_width="@dimen/status_dot_size"
+                        android:layout_height="@dimen/status_dot_size"
+                        android:background="@drawable/bg_status_dot_offline" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_small"
+                        android:layout_weight="1"
+                        android:text="@string/home_network_status_title"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_size_body_large"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_home_status_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_badge_neutral"
+                        android:paddingStart="@dimen/spacing_small"
+                        android:paddingTop="@dimen/spacing_xsmall"
+                        android:paddingEnd="@dimen/spacing_small"
+                        android:paddingBottom="@dimen/spacing_xsmall"
+                        android:text="@string/badge_status_idle"
+                        android:textColor="@color/status_offline"
+                        android:textSize="@dimen/text_size_caption"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_home_offline_notice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/home_network_status_offline"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_size_body" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xsmall"
+                    android:text="@string/home_transceivers_standby"
+                    android:textColor="@color/text_muted"
+                    android:textSize="@dimen/text_size_caption" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- PROMINENT EMERGENCY SOS HERO CARD -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_home_sos"
+            style="@style/Widget.BLACKOUT.Card.Emergency"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_large">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_large">
+
+                <!-- Header Badge -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="@dimen/icon_size_medium"
+                        android:layout_height="@dimen/icon_size_medium"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_sos"
+                        app:tint="@color/emergency_red" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_small"
+                        android:letterSpacing="0.08"
+                        android:text="@string/home_sos_card_title"
+                        android:textColor="@color/emergency_red"
+                        android:textSize="@dimen/text_size_body"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/home_sos_card_subtitle"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_size_body" />
+
+                <!-- Action Button for SOS -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_home_trigger_sos"
+                    style="@style/Widget.BLACKOUT.Button.Emergency"
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/sos_button_height"
+                    android:layout_marginTop="@dimen/spacing_large"
+                    android:text="@string/home_action_trigger_sos"
+                    app:icon="@drawable/ic_sos"
+                    app:iconGravity="textStart"
+                    app:iconTint="@color/white" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Nearby Network Overview Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xlarge"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/home_section_network"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_size_subtitle"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_home_goto_nearby"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/spacing_xsmall"
+                android:text="@string/home_btn_view_network"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_body_small"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.BLACKOUT.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_large">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="@dimen/icon_size_medium"
+                        android:layout_height="@dimen/icon_size_medium"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_radio_mesh"
+                        app:tint="@color/teal_accent" />
+
+                    <TextView
+                        android:id="@+id/tv_home_peers_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/spacing_small"
+                        android:text="@string/home_peers_count_zero"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_size_body_large"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_home_peers_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/home_peers_summary"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_size_body" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Recent Emergency Activity Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xlarge"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/home_section_activity"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_size_subtitle"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_home_goto_history"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/spacing_xsmall"
+                android:text="@string/home_btn_view_history"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_body_small"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Recent Activity Container -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.BLACKOUT.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Empty State -->
+                <LinearLayout
+                    android:id="@+id/layout_home_activity_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_large">
+
+                    <ImageView
+                        android:layout_width="@dimen/icon_size_large"
+                        android:layout_height="@dimen/icon_size_large"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_nav_history"
+                        app:tint="@color/text_muted" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_small"
+                        android:text="@string/home_activity_empty"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_size_body" />
+
+                </LinearLayout>
+
+                <!-- Active Recent SOS Record -->
+                <LinearLayout
+                    android:id="@+id/layout_home_activity_content"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="@dimen/spacing_large"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/tv_home_recent_priority"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_badge_emergency"
+                            android:paddingStart="@dimen/spacing_small"
+                            android:paddingTop="@dimen/spacing_xsmall"
+                            android:paddingEnd="@dimen/spacing_small"
+                            android:paddingBottom="@dimen/spacing_xsmall"
+                            tools:text="CRITICAL"
+                            android:textColor="@color/emergency_red"
+                            android:textSize="@dimen/text_size_caption"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_home_recent_category"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="@dimen/spacing_small"
+                            android:background="@drawable/bg_badge_neutral"
+                            android:paddingStart="@dimen/spacing_small"
+                            android:paddingTop="@dimen/spacing_xsmall"
+                            android:paddingEnd="@dimen/spacing_small"
+                            android:paddingBottom="@dimen/spacing_xsmall"
+                            tools:text="MEDICAL"
+                            android:textColor="@color/text_primary"
+                            android:textSize="@dimen/text_size_caption"
+                            android:textStyle="bold" />
+
+                        <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1" />
+
+                        <TextView
+                            android:id="@+id/tv_home_recent_time"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            tools:text="Just now"
+                            android:textColor="@color/text_muted"
+                            android:textSize="@dimen/text_size_caption" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_home_recent_description"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_small"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        tools:text="Emergency details preview here..."
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_size_body" />
+
+                    <TextView
+                        android:id="@+id/tv_home_recent_location"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_xsmall"
+                        tools:text="Lat: 37.77490° N, Lon: -122.41940° E"
+                        android:textColor="@color/text_muted"
+                        android:textSize="@dimen/text_size_caption" />
+
+                </LinearLayout>
+
+            </FrameLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Latest Public Safety Alert Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xlarge"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/home_section_alerts"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_size_subtitle"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_home_goto_alerts"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="@dimen/spacing_xsmall"
+                android:text="@string/home_btn_view_alerts"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_body_small"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Latest Alert Container (Empty state for Phase 1) -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.BLACKOUT.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_large">
+
+                <ImageView
+                    android:layout_width="@dimen/icon_size_large"
+                    android:layout_height="@dimen/icon_size_large"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_nav_alerts"
+                    app:tint="@color/text_muted" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_small"
+                    android:text="@string/home_alerts_empty"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_size_body" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

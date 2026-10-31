@@ -1,0 +1,198 @@
+<resources>
+    <!-- App Identity -->
+    <string name="app_name">BLACKOUT</string>
+    <string name="app_tagline">Decentralized Emergency Communication</string>
+    <string name="app_version">2.0.0 (Phase 2 GPS &amp; Room Persistence)</string>
+    <string name="badge_offline_ready">OFFLINE ARCHITECTURE</string>
+    <string name="badge_status_idle">RADIO IDLE</string>
+    <string name="badge_status_active">DISCOVERY ACTIVE</string>
+
+    <!-- Navigation Titles -->
+    <string name="nav_home">Home</string>
+    <string name="nav_nearby">Nearby</string>
+    <string name="nav_alerts">Alerts</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home Screen -->
+    <string name="home_hero_title">Decentralized Emergency Network</string>
+    <string name="home_hero_subtitle">Communicate and coordinate when cellular towers and internet infrastructure fail.</string>
+    <string name="home_network_status_title">Mesh Radio Status</string>
+    <string name="home_network_status_offline">Offline communication is not configured yet.</string>
+    <string name="home_transceivers_standby">P2P Transceivers: BLE 5.0 Standby • Wi-Fi Direct Standby</string>
+    <string name="home_sos_card_title">EMERGENCY SOS BEACON</string>
+    <string name="home_sos_card_subtitle">Prepare a critical emergency alert packet offline with live GPS coordinates.</string>
+    <string name="home_action_trigger_sos">TRIGGER EMERGENCY SOS</string>
+    <string name="home_section_network">Nearby Network State</string>
+    <string name="home_peers_count_zero">0 Active Peer Links</string>
+    <string name="home_peers_summary">No peer connections established. Local radio is currently in standby.</string>
+    <string name="home_section_activity">Recent Emergency Activity</string>
+    <string name="home_activity_empty">No active emergency signals queued locally.</string>
+    <string name="home_section_alerts">Latest Public Safety Alert</string>
+    <string name="home_alerts_empty">No verified public safety alerts currently cached.</string>
+    <string name="home_btn_view_network">View Network Details</string>
+    <string name="home_btn_view_history">View History</string>
+    <string name="home_btn_view_alerts">View All Alerts</string>
+
+    <!-- Emergency SOS Screen -->
+    <string name="sos_screen_title">Emergency SOS Alert</string>
+    <string name="sos_phase_notice_title">Offline SOS &amp; GPS Location Capture</string>
+    <string name="sos_phase_notice_desc">Emergency alerts are saved permanently to your local device. Direct hardware GPS capture works offline without cellular or Wi-Fi data.</string>
+    <string name="sos_category_label">Select Emergency Category</string>
+    <string name="sos_category_medical">Medical Emergency</string>
+    <string name="sos_category_road_accident">Road Accident</string>
+    <string name="sos_category_trapped">Trapped / Stranded</string>
+    <string name="sos_category_flood">Flood</string>
+    <string name="sos_category_fire">Fire</string>
+    <string name="sos_category_disaster">Natural Disaster</string>
+    <string name="sos_category_personal_safety">Personal Safety</string>
+    <string name="sos_category_other">Other</string>
+
+    <string name="sos_priority_label">Assigned Broadcast Priority</string>
+    <string name="sos_priority_critical">CRITICAL (Immediate Attention)</string>
+    <string name="sos_priority_high">HIGH (Urgent Assistance Required)</string>
+    <string name="sos_priority_moderate">MODERATE (Standard Emergency Queue)</string>
+
+    <string name="sos_details_label">Emergency Description (Optional)</string>
+    <string name="sos_details_hint">Specify the emergency situation, number of people involved, injuries, hazards, or immediate supplies needed&#8230;</string>
+
+    <!-- Location Section -->
+    <string name="sos_location_label">Device GPS Coordinates</string>
+    <string name="loc_status_getting">Getting location&#8230;</string>
+    <string name="loc_status_acquired">Location acquired</string>
+    <string name="loc_status_cached">Using previously recorded location</string>
+    <string name="loc_status_unavailable">GPS signal unavailable</string>
+    <string name="loc_status_denied">Location permission denied</string>
+    <string name="loc_status_disabled">Location services disabled</string>
+    <string name="sos_location_explanation">GPS satellites orbit independently of cellular networks. GPS acquisition works anywhere outdoors without internet connectivity.</string>
+    <string name="sos_btn_get_location">Get My Location</string>
+    <string name="sos_btn_retry_location">Retry Location Capture</string>
+    <string name="sos_action_create">CREATE EMERGENCY SOS</string>
+
+    <!-- Confirmation Dialogs -->
+    <string name="sos_confirm_dialog_title">Confirm Emergency SOS Creation</string>
+    <string name="sos_confirm_saved_title">Emergency Alert Saved</string>
+    <string name="sos_confirm_saved_message">Emergency alert saved on this device.\n\nThis alert has not yet been transmitted to other devices or emergency services.</string>
+    <string name="sos_dialog_positive">Understood</string>
+    <string name="sos_coords_format">Coordinates: %1$.5f° N, %2$.5f° E</string>
+    <string name="sos_accuracy_format">Accuracy: ±%1$.1f metres</string>
+    <string name="sos_timestamp_format">Fix Time: %1$s</string>
+    <string name="sos_coords_none">Coordinates: Not Available</string>
+
+    <!-- Nearby Network Screen (Phase 3 Real P2P) -->
+    <string name="nearby_screen_title">Nearby Mesh Network</string>
+    <string name="nearby_protocol_title">Direct Device-to-Device Mesh (P2P Cluster)</string>
+    <string name="nearby_protocol_desc">BLACKOUT uses Google Nearby Connections (P2P Cluster) for real direct device-to-device radio links (Bluetooth LE &amp; Wi-Fi Direct). Transmit emergency SOS packets offline without internet or cellular connectivity.</string>
+    <string name="nearby_status_card_title">Local Radio Interface</string>
+    <string name="nearby_radio_state_idle">Radio Interface: Standby / Idle</string>
+    <string name="nearby_radio_state_desc">Start Advertising on one device and Discovering on the other to establish a direct connection.</string>
+    <string name="nearby_btn_start_advertising">Start Advertising</string>
+    <string name="nearby_btn_start_discovery">Start Discovering</string>
+    <string name="nearby_btn_stop_radio">Stop Radio</string>
+    <string name="nearby_badge_idle">IDLE</string>
+    <string name="nearby_badge_advertising">ADVERTISING</string>
+    <string name="nearby_badge_discovering">DISCOVERING</string>
+    <string name="nearby_badge_connected">CONNECTED</string>
+    <string name="nearby_radio_state_advertising">Advertising as %1$s (Discoverable)</string>
+    <string name="nearby_radio_state_discovering">Scanning for nearby BLACKOUT devices&#8230;</string>
+    <string name="nearby_radio_state_connected">Connected to %1$s</string>
+    <string name="nearby_radio_state_disconnected">Disconnected from peer.</string>
+    <string name="nearby_my_identity">Local Node: %1$s (%2$s)</string>
+
+    <!-- Connection Approval & Connected Peer -->
+    <string name="nearby_approval_title">Incoming Connection Request</string>
+    <string name="nearby_approval_desc">A nearby node is requesting to connect. Confirm the verification code matches on both devices:</string>
+    <string name="nearby_auth_code_format">Verification Code: %1$s</string>
+    <string name="nearby_btn_accept">Accept Connection</string>
+    <string name="nearby_btn_reject">Reject</string>
+    <string name="nearby_connected_card_title">Active Connected Peer</string>
+    <string name="nearby_connected_card_desc">Direct offline radio link established. You can now exchange emergency SOS payloads.</string>
+    <string name="nearby_btn_disconnect">Disconnect Peer</string>
+
+    <!-- SOS Transfer Section -->
+    <string name="nearby_transfer_section_title">Send Emergency SOS to Connected Peer</string>
+    <string name="nearby_transfer_select_label">Select an offline emergency alert stored on this device:</string>
+    <string name="nearby_transfer_btn_select">Choose Local SOS Alert</string>
+    <string name="nearby_transfer_btn_send">TRANSMIT SOS PAYLOAD</string>
+    <string name="nearby_transfer_success">SOS payload successfully transmitted to %1$s.</string>
+    <string name="nearby_transfer_failed">Transmission failed: %1$s</string>
+    <string name="nearby_transfer_no_selected">Please select an emergency SOS alert to transmit.</string>
+    <string name="nearby_transfer_no_messages">No locally saved emergency alerts available. Create an SOS in the Emergency SOS screen first.</string>
+
+    <!-- Received SOS Notifications -->
+    <string name="nearby_received_sos_title">Emergency SOS Received!</string>
+    <string name="nearby_received_sos_message">Received emergency alert from %1$s.\nCategory: %2$s\nPriority: %3$s\n\nAlert has been saved permanently to your local database and history.</string>
+
+    <string name="nearby_detected_title">Nearby Discovered Nodes</string>
+    <string name="nearby_detected_empty">No nearby BLACKOUT devices detected.</string>
+    <string name="nearby_detected_explanation">When nearby devices running BLACKOUT advertise within radio range, they will appear here. Tap Connect to establish a direct link.</string>
+
+    <!-- Phase 4 Multi-Hop Relay Engine -->
+    <string name="nearby_relay_title">Multi-Hop Relay Engine</string>
+    <string name="nearby_relay_queued_badge">%1$d QUEUED</string>
+    <string name="nearby_relay_desc_default">Relay engine active. Messages stored locally will be carried and forwarded when compatible peers are discovered.</string>
+
+    <!-- Public Alerts Screen -->
+    <string name="alerts_screen_title">Public Safety Alerts</string>
+    <string name="alerts_filter_all">All Alerts</string>
+    <string name="alerts_filter_critical">Critical Warnings</string>
+    <string name="alerts_filter_advisories">Advisories</string>
+    <string name="alerts_filter_weather">Weather</string>
+    <string name="alerts_empty_title">No Verified Alerts Cached</string>
+    <string name="alerts_empty_desc">Public safety alerts broadcast by civil protection authorities and relayed across the peer-to-peer mesh will appear here once received.</string>
+    <string name="alerts_issuing_authority">Issuing Authority: %1$s</string>
+    <string name="alerts_affected_area">Affected Area: %1$s</string>
+    <string name="alerts_published_time">Published: %1$s</string>
+    <string name="alerts_expiry_time">Expires: %1$s</string>
+    <string name="alerts_instructions_label">Civil Safety Instructions:</string>
+
+    <!-- Message History Screen -->
+    <string name="history_screen_title">Emergency SOS History</string>
+    <string name="history_filter_all">All Saved SOS</string>
+    <string name="history_empty_title">No Emergency Alerts Recorded</string>
+    <string name="history_empty_desc">Created emergency SOS alerts are saved in your permanent offline Room database and will appear here.</string>
+    <string name="history_dialog_title">Emergency Alert Record</string>
+    <string name="status_local_saved">LOCAL_SAVED</string>
+    <string name="status_loc_unavailable">LOCATION_UNAVAILABLE</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_screen_title">Settings &amp; Device Info</string>
+    <string name="settings_section_identity">Local Device Identity</string>
+    <string name="settings_node_id">NODE-7F84 (Local Node)</string>
+    <string name="settings_node_id_notice">(Local identifier — identity persistence will be connected in future phases)</string>
+    <string name="settings_section_hardware">Hardware &amp; Permissions</string>
+    <string name="settings_location_perm_label">Location Permission</string>
+    <string name="settings_perm_granted">GRANTED (GPS Active)</string>
+    <string name="settings_perm_granted_btn">Permission Granted</string>
+    <string name="settings_perm_denied">NOT GRANTED (Required for GPS)</string>
+    <string name="settings_btn_request_perm">Request Location Permission</string>
+    <string name="settings_bluetooth_status_label">Bluetooth Radio State</string>
+    <string name="settings_bluetooth_status_val">Transceiver Ready (Hardware Standby)</string>
+    <string name="settings_section_notifications">Emergency Notifications</string>
+    <string name="settings_notif_siren">Audible Emergency Siren</string>
+    <string name="settings_notif_siren_desc">Play loud acoustic beacon on incoming critical SOS alerts</string>
+    <string name="settings_notif_vibrate">Tactile Vibration Alerts</string>
+    <string name="settings_notif_vibrate_desc">Vibrate repeatedly when high priority packets are routed</string>
+    <string name="settings_notif_background">Background Mesh Relaying</string>
+    <string name="settings_notif_background_desc">Allow device to relay emergency messages for others when screen is locked</string>
+    <string name="settings_section_security">Security &amp; Privacy Model</string>
+    <string name="settings_sec_zero_cloud_title">Zero Cloud Dependency</string>
+    <string name="settings_sec_zero_cloud_desc">BLACKOUT stores all SOS records in local device encrypted SQLite (Room). No tracking or telemetry.</string>
+    <string name="settings_sec_crypto_title">End-to-End Cryptographic Signing</string>
+    <string name="settings_sec_crypto_desc">Future phases will integrate Ed25519 asymmetric cryptography to prevent spoofed emergency alerts.</string>
+    <string name="settings_section_specs">Protocol Specifications</string>
+    <string name="settings_spec_max_hops">Max Mesh Relay Hops: 7 hops</string>
+    <string name="settings_spec_ttl">Message Expiration (TTL): 48 hours</string>
+    <string name="settings_spec_transport">Transport Layer: BLE 5.0 + Wi-Fi Direct (802.11)</string>
+    <string name="settings_section_about">About BLACKOUT</string>
+    <string name="settings_about_desc">BLACKOUT is an open-source decentralized emergency communication platform designed to save lives during disaster blackouts, infrastructure collapses, and grid failures.</string>
+    <string name="settings_btn_view_coming_soon">Feature Roadmap</string>
+
+    <!-- General UI Labels -->
+    <string name="action_ok">OK</string>
+    <string name="action_confirm">Confirm &amp; Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_close">Close</string>
+    <string name="feature_coming_soon_title">Roadmap Notice</string>
+    <string name="feature_coming_soon_desc">This feature is scheduled for Phase 3. Phase 2 focuses on GPS location capture and offline Room persistence.</string>
+</resources>

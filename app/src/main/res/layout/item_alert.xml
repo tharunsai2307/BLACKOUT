@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_alert_root"
+    style="@style/Widget.BLACKOUT.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/spacing_medium">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_large">
+
+        <!-- Top Header Row: Severity, Revision & Verification Badges -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_alert_severity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_emergency"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="@dimen/spacing_xsmall"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="@dimen/spacing_xsmall"
+                android:textColor="@color/emergency_red"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="CRITICAL" />
+
+            <TextView
+                android:id="@+id/tv_alert_revision"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_xsmall"
+                android:background="@drawable/bg_badge_teal"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="@dimen/spacing_xsmall"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="@dimen/spacing_xsmall"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="REV 1" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tv_alert_verification"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_teal"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="@dimen/spacing_xsmall"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="@dimen/spacing_xsmall"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="VERIFIED" />
+
+        </LinearLayout>
+
+        <!-- Authority & Relevance Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_alert_authority"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="Civil Protection Agency" />
+
+            <TextView
+                android:id="@+id/tv_alert_relevance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_small"
+                android:textColor="@color/status_warning"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="• IN AFFECTED ZONE" />
+
+        </LinearLayout>
+
+        <!-- Alert Title -->
+        <TextView
+            android:id="@+id/tv_alert_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_title"
+            android:textStyle="bold"
+            tools:text="Flash Flood &amp; Dam Overflow Warning" />
+
+        <!-- Area & Category Details -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="@dimen/icon_size_xsmall"
+                android:layout_height="@dimen/icon_size_xsmall"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_location_pin"
+                app:tint="@color/text_secondary" />
+
+            <TextView
+                android:id="@+id/tv_alert_area"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_xsmall"
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/text_size_body_small"
+                tools:text="Sector 4 &amp; River Basin Region" />
+
+        </LinearLayout>
+
+        <!-- Civil Instructions Container -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:background="@drawable/bg_badge_neutral"
+            android:orientation="vertical"
+            android:padding="@dimen/spacing_medium">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/alerts_instructions_label"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_alert_instructions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xsmall"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_size_body"
+                tools:text="Seek higher ground immediately. Disconnect primary electrical circuits." />
+
+        </LinearLayout>
+
+        <!-- Divider Line -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:background="@color/divider_color" />
+
+        <!-- Footer Row: Published & Expiry -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="@dimen/icon_size_xsmall"
+                android:layout_height="@dimen/icon_size_xsmall"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_time"
+                app:tint="@color/text_muted" />
+
+            <TextView
+                android:id="@+id/tv_alert_published"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_xsmall"
+                android:textColor="@color/text_muted"
+                android:textSize="@dimen/text_size_caption"
+                tools:text="Issued: 15 mins ago" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tv_alert_expiry"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_muted"
+                android:textSize="@dimen/text_size_caption"
+                tools:text="Expires: in 6 hours" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

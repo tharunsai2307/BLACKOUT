@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    style="@style/Widget.BLACKOUT.Card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/spacing_medium">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="@dimen/spacing_large">
+
+        <ImageView
+            android:layout_width="@dimen/icon_size_medium"
+            android:layout_height="@dimen/icon_size_medium"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_radio_mesh"
+            app:tint="@color/teal_accent" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_medium"
+            android:layout_marginEnd="@dimen/spacing_small"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_device_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/text_size_body_large"
+                android:textStyle="bold"
+                tools:text="NODE-B234" />
+
+            <TextView
+                android:id="@+id/tv_device_endpoint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="monospace"
+                android:textColor="@color/text_muted"
+                android:textSize="@dimen/text_size_caption"
+                tools:text="Endpoint ID: 4xF9" />
+
+            <TextView
+                android:id="@+id/tv_device_status_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/spacing_xsmall"
+                android:background="@drawable/bg_badge_teal"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="2dp"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="2dp"
+                android:text="DISCOVERED"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_device_connect"
+            style="@style/Widget.BLACKOUT.Button.Primary"
+            android:layout_width="wrap_content"
+            android:layout_height="@dimen/button_height_primary"
+            android:text="Connect"
+            android:textSize="@dimen/text_size_caption"
+            app:icon="@drawable/ic_broadcast"
+            app:iconSize="@dimen/icon_size_xsmall"
+            app:iconTint="@color/bg_dark" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

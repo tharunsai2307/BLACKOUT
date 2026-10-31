@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/bg_dark">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_large">
+
+        <!-- Top Header: Severity, Revision & Status Badges -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_detail_severity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_emergency"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="@dimen/spacing_xsmall"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="@dimen/spacing_xsmall"
+                android:textColor="@color/emergency_red"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="CRITICAL" />
+
+            <TextView
+                android:id="@+id/tv_detail_revision"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_small"
+                android:background="@drawable/bg_badge_teal"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="@dimen/spacing_xsmall"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="@dimen/spacing_xsmall"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="REVISION 1" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/tv_detail_verification"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_badge_teal"
+                android:paddingStart="@dimen/spacing_small"
+                android:paddingTop="@dimen/spacing_xsmall"
+                android:paddingEnd="@dimen/spacing_small"
+                android:paddingBottom="@dimen/spacing_xsmall"
+                android:textColor="@color/teal_accent"
+                android:textSize="@dimen/text_size_caption"
+                android:textStyle="bold"
+                tools:text="VERIFIED (Ed25519)" />
+
+        </LinearLayout>
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/tv_detail_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_headline"
+            android:textStyle="bold"
+            tools:text="Severe Flash Flooding &amp; Riverbank Evacuation" />
+
+        <!-- Issuing Authority -->
+        <TextView
+            android:id="@+id/tv_detail_authority"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xsmall"
+            android:textColor="@color/teal_accent"
+            android:textSize="@dimen/text_size_body_small"
+            android:textStyle="bold"
+            tools:text="Issuing Authority: BLACKOUT Civil Defense Administration" />
+
+        <!-- Description -->
+        <TextView
+            android:id="@+id/tv_detail_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:lineSpacingExtra="3dp"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_body"
+            tools:text="Flash flooding reported in sector 4. Move to designated high-ground assembly points immediately." />
+
+        <!-- Geographic Relevance Section -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.BLACKOUT.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_large">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_medium">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="GEOGRAPHIC RELEVANCE &amp; SCOPE"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_size_caption"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_detail_relevance_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xsmall"
+                    android:textColor="@color/emergency_red"
+                    android:textSize="@dimen/text_size_body_small"
+                    android:textStyle="bold"
+                    tools:text="• YOUR DEVICE IS IN THE DIRECT AFFECTED ZONE" />
+
+                <TextView
+                    android:id="@+id/tv_detail_affected_regions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xsmall"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_size_body_small"
+                    tools:text="Target Sectors: Sector 4, Riverbank Basin, North Ward" />
+
+                <TextView
+                    android:id="@+id/tv_detail_coordinates"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xsmall"
+                    android:textColor="@color/text_muted"
+                    android:textSize="@dimen/text_size_caption"
+                    tools:text="Epicenter: 13.082680, 80.270718 (Radius: 5.00 km)" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Cryptographic Proof & Signing Details -->
+        <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.BLACKOUT.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/spacing_medium">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CRYPTOGRAPHIC AUDIT &amp; SIGNATURE DETAILS"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/text_size_caption"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tv_detail_key_id"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xsmall"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/text_size_caption"
+                    tools:text="Signing Key ID: KEY-BLACKOUT-ROOT-2026" />
+
+                <TextView
+                    android:id="@+id/tv_detail_algorithm"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/text_muted"
+                    android:textSize="@dimen/text_size_caption"
+                    tools:text="Algorithm: RFC 8032 Ed25519" />
+
+                <TextView
+                    android:id="@+id/tv_detail_payload_hash"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/text_muted"
+                    android:textSize="@dimen/text_size_caption"
+                    tools:text="SHA-256 Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" />
+
+                <TextView
+                    android:id="@+id/tv_detail_signature_snippet"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_xsmall"
+                    android:background="@drawable/bg_badge_neutral"
+                    android:padding="@dimen/spacing_small"
+                    android:textColor="@color/teal_accent"
+                    android:textSize="10sp"
+                    tools:text="Digital Signature (Base64):\nsL8/lOZt03vDDP2IIlFbVjTpgWDy22y1Z8kiF0BJ4IxuBDkAp4NUwl4i0kVZu5v36GVVa90TmyrpnUxscmd2AA==" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Timestamps & Transport Information -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_detail_issued_at"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_muted"
+                android:textSize="@dimen/text_size_caption"
+                tools:text="Issued: 2026-11-01 01:00 UTC" />
+
+            <TextView
+                android:id="@+id/tv_detail_expires_at"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_muted"
+                android:textSize="@dimen/text_size_caption"
+                tools:text="Expires: 2026-11-02 01:00 UTC" />
+
+            <TextView
+                android:id="@+id/tv_detail_transport_source"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_muted"
+                android:textSize="@dimen/text_size_caption"
+                tools:text="Transport: P2P Multi-Hop Mesh (Source: DEV-7F84)" />
+
+        </LinearLayout>
+
+        <!-- Close Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_detail_close"
+            style="@style/Widget.BLACKOUT.Button.Secondary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_large"
+            android:text="Dismiss Advisory" />
+
+    </LinearLayout>
+
+</ScrollView>
