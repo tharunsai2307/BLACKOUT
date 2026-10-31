@@ -20,7 +20,11 @@ When natural disasters, conflict, or severe infrastructure failures strike, cent
 - **Platform**: Native Android (Android SDK)
 - **Primary Language**: Java (Java 11 compatibility)
 - **Layout Architecture**: Native Android XML Layouts & Material Design Components
-- **Persistence Engine**: Android Jetpack Room 2.6.1 (`androidx.room:room-runtime` & `androidx.room:room-compiler`) — Version 3 schema
+- **Persistence Engine**: Android Jetpack Room 2.6.1 (`androidx.room:room-runtime` & `androidx.room:room-compiler`) — Version 4 schema
+- **Cryptography Engine**: Bouncy Castle Java Provider (`org.bouncycastle:bcprov-jdk18on:1.78.1`) for Ed25519 asymmetric signature verification (RFC 8032)
+- **Background Scheduling**: Android Jetpack WorkManager 2.9.0 (`androidx.work:work-runtime`)
+- **P2P Wireless Engine**: Google Nearby Connections API (`com.google.android.gms:play-services-nearby:19.3.0`)
+- **Operations Portal & Web**: React 18 + TypeScript + Vite + Tailwind CSS + Leaflet (Phase 6 & 7)
 - **P2P Wireless Engine**: Google Nearby Connections API (`com.google.android.gms:play-services-nearby:19.3.0`)
 - **Cloud Backend & Gateway**: Supabase PostgreSQL with Edge Functions (Deno/TypeScript) & native Android `HttpURLConnection`
 - **Minimum SDK**: Android 8.0 (API level 26)
