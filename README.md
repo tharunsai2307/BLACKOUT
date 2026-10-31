@@ -40,7 +40,7 @@ When natural disasters, conflict, or severe infrastructure failures strike, cent
 | **Home** | Primary mission dashboard. Real-time radio state overview, live Nearby connection state with connected peer count, live **Internet Gateway Online/Offline telemetry**, prominent SOS trigger hero card, and recent emergency activity card bound to Room DB. | Fully Implemented (Live Gateway & Mesh State Hookup) |
 | **Emergency SOS** | Emergency beacon preparation. 8 categories selector, dynamic priority computation, genuine GPS capture button, live coordinates/accuracy review, pre-save confirmation dialog, Room storage, automatic relay queue, and automatic cloud upload queue enqueueing. | Fully Implemented (Hardware GPS, Relay & Cloud Queue Hookup) |
 | **Nearby Network** | Local peer network dashboard. Local node callsign display, independent Advertising and Discovery radio toggles, connection approval with 4-digit mutual verification code, active connected peer card, live Multi-Hop Relay Engine Status card, and **Internet Gateway & Cloud Sync card with manual sync action**. | Fully Implemented (Mesh Relay & Cloud Gateway Sync) |
-| **Public Alerts** | Civil defense and safety advisory feed with severity badges, issuing authority, affected area, and instructional cards. | Fully Implemented (Clean Cached Empty State) |
+| **Public Alerts** | Civil defense and public emergency warning feed. Live Room DB binding, category filter chips, pull-to-refresh sync, cryptographic authenticity badges (`AUTHENTIC SIGNATURE (Ed25519)`), remaining validity countdown timers, and detailed cryptographic inspection dialog. | Fully Implemented (Phase 7 Signed Warnings, Verification & Multi-Hop Relay) |
 | **Message History** | Outgoing SOS records, incoming broadcasts, and relayed packet logs with priority badges, timestamps, coordinates/accuracy, category filters, and detailed audit view dialog. Displays status badges: `LOCAL SAVED`, `RECEIVED (P2P)`, `RELAYED (HOP X)`, `TRANSFERRED`, and `TRANSFER FAILED`. **Detailed inspection dialog displays cloud gateway upload status with backend reference ID and manual sync trigger.** | Fully Implemented (Room DB Querying with Hop & Cloud Audit) |
 | **Settings & Info** | Node identity callsign, live runtime location permission status check & requester, alert notifications toggles, privacy model, and protocol specs. | Fully Implemented (Live System Permission Binding) |
 
@@ -80,13 +80,19 @@ The `LocationService` captures actual physical coordinates using Android's direc
 
 ---
 
-## 💾 Offline Room Database Persistence (Version 3)
+## 💾 Offline Room Database Persistence (Version 4)
 
 The local database (`BlackoutDatabase`) stores emergency alerts, relay queues, delivery history, and cloud upload queues permanently across restarts:
 - **`emergency_messages`**: Emergency alert records (`messageId`, `senderDeviceId`, `senderCallsign`, `emergencyCategory`, `description`, `latitude`, `longitude`, `locationAccuracy`, `createdAt`, `expiresAt`, `priority`, `status`, `hopCount`).
 - **`relay_queue`**: Store-carry-and-forward queue (`messageId`, `relayStatus`, `queuedAt`, `nextAttemptAt`, `attemptCount`, `lastAttemptAt`, `lastError`, `priority`).
 - **`relay_history`**: Peer delivery log for audit and duplicate suppression (`messageId`, `fromDeviceId`, `toDeviceId`, `hopNumber`, `transferStatus`, `timestamp`).
 - **`pending_uploads`**: Internet Gateway upload queue (`messageId`, `uploadStatus`, `gatewayDeviceId`, `attemptCount`, `nextAttemptAt`, `lastAttemptAt`, `uploadedAt`, `backendReference`, `lastErrorCode`).
+- **`public_warnings`**: Active digitally signed public warnings (`warningId`, `protocolVersion`, `revision`, `title`, `description`, `category`, `severity`, `issuingAuthority`, `issuedAt`, `effectiveAt`, `expiresAt`, `affectedRegions`, `latitude`, `longitude`, `radiusMeters`, `language`, `status`, `signingKeyId`, `signatureAlgorithm`, `signature`, `canonicalPayload`, `verificationStatus`, `payloadHash`).
+- **`warning_revisions`**: Immutable historical audit ledger of superseded warning revisions.
+- **`trusted_signing_keys`**: Trusted public verification keys registry.
+- **`warning_relay_history`**: Store-carry-and-forward warning distribution peer event logs.
+- **`warning_sync_state`**: Differential sync tracking table.
+- **`warning_revocations`**: Formal administrative revocation directives cache.
 
 ---
 
@@ -103,7 +109,11 @@ From the project root:
 # Build Debug APK
 ./gradlew assembleDebug
 
-# Run Full Unit Test Suite (77 tests passing)
+# Run Full Android Unit Test Suite (113 tests passing, 0 failures)
+./gradlew testDebugUnitTest
+
+# Run Operations Portal Web Test Suite (26 tests passing, 0 failures)
+npm --prefix web test -- --run
 ./gradlew testDebugUnitTest
 ```
 
