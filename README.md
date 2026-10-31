@@ -114,7 +114,6 @@ From the project root:
 
 # Run Operations Portal Web Test Suite (26 tests passing, 0 failures)
 npm --prefix web test -- --run
-./gradlew testDebugUnitTest
 ```
 
 ### 3. Deploy to Device
@@ -168,5 +167,24 @@ For complete operations portal documentation, consult:
 - **Phase 3 (Complete)**: Real Device-to-Device Offline P2P Communication via Google Nearby Connections, Mutual Handshake Verification, JSON Byte Serialization, and Duplicate-Proof Room Ingestion.
 - **Phase 4 (Complete)**: Multi-Hop Store-Carry-and-Forward Relay Engine, Message Inventory Exchange, Application-Level Acknowledgements, Persistent Room Queue, and 7-Hop Enforcement.
 - **Phase 5 (Complete)**: Central Cloud Backend, Supabase PostgreSQL Database, Edge Functions Ingestion API, Mobile Internet Gateway, Automatic Network Synchronization, and 77 Automated Unit Tests.
-- **Phase 6 (Upcoming)**: Web-Based Emergency Response Dispatcher Dashboard & Real-Time Geospatial Incident Map.
+- [`PHASE_7_IMPLEMENTATION.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_7_IMPLEMENTATION.md) — Digitally signed public warnings and offline warning distribution architecture
+- [`PHASE_7_TESTING.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_7_TESTING.md) — Phase 7 automated testing suite (113 Android + 26 Web unit tests)
+- [`WARNING_PROTOCOL.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/WARNING_PROTOCOL.md) — Public warning protocol specification, binary models & canonical format
+- [`DIGITAL_SIGNATURE_ARCHITECTURE.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/DIGITAL_SIGNATURE_ARCHITECTURE.md) — Ed25519 asymmetric signature engine and 10-step verification workflow
+- [`KEY_MANAGEMENT.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/KEY_MANAGEMENT.md) — Public key registry, key lifecycle, rotation, and revocation procedures
+- [`OFFLINE_WARNING_DISTRIBUTION.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/OFFLINE_WARNING_DISTRIBUTION.md) — Store-carry-and-forward mesh mechanics and zero-trust distribution
+- [`WARNING_API.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/WARNING_API.md) — Backend Edge Functions, signing endpoints, and RBAC authorization
+- [`SECURITY_MODEL.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/SECURITY_MODEL.md) — Threat model, anti-tampering guarantees, and rollback protection
+
+---
+
+## 🧭 Multi-Phase Roadmap
+
+- **Phase 1 (Complete)**: Complete UI/UX Development, Java Clean Architecture, Navigation Lifecycle, and Honest State Validation.
+- **Phase 2 (Complete)**: Direct Hardware GPS Location Capture, Room Database Persistence, 8 Emergency Categories, History Inspection, and Offline Storage.
+- **Phase 3 (Complete)**: Real Device-to-Device Offline P2P Communication via Google Nearby Connections, Mutual Handshake Verification, JSON Byte Serialization, and Duplicate-Proof Room Ingestion.
+- **Phase 4 (Complete)**: Multi-Hop Store-Carry-and-Forward Relay Engine, Message Inventory Exchange, Application-Level Acknowledgements, Persistent Room Queue, and 7-Hop Enforcement.
+- **Phase 5 (Complete)**: Central Cloud Backend, Supabase PostgreSQL Database, Edge Functions Ingestion API, Mobile Internet Gateway, Automatic Network Synchronization, and 77 Automated Unit Tests.
+- **Phase 6 (Complete)**: Web-Based Emergency Operations Portal, Incident Management, Verification Workflow, Team Dispatching, and Real-Time Leaflet Geospatial Map.
+- **Phase 7 (Complete)**: Digitally Signed Public Warnings, Ed25519 Cryptographic Verification, Operations Portal Warning Publishing, Multi-Hop Offline Mesh Distribution, Anti-Rollback Protection, Room v4 Migration, and 113 Passing Android Unit Tests + 26 Passing Web Tests.
 
