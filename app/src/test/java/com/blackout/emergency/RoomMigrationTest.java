@@ -58,6 +58,9 @@ public class RoomMigrationTest {
 
         assertEquals(3, BlackoutDatabase.MIGRATION_3_4.startVersion);
         assertEquals(4, BlackoutDatabase.MIGRATION_3_4.endVersion);
+
+        assertEquals(4, BlackoutDatabase.MIGRATION_4_5.startVersion);
+        assertEquals(5, BlackoutDatabase.MIGRATION_4_5.endVersion);
     }
 
     @Test
@@ -169,6 +172,45 @@ public class RoomMigrationTest {
         assertTrue("Must create query indexes for active warnings and keys", indexCount >= 6);
     }
 
+
+    @Test
+    public void testMigration_4_5_CreatesProfileAndContactTablesAndIndexes() {
+        executedSqlList.clear();
+        BlackoutDatabase.MIGRATION_4_5.migrate(mockDatabase);
+
+        assertFalse("Migration 4->5 must execute SQL statements", executedSqlList.isEmpty());
+
+        boolean hasEmergencyContacts = false;
+        boolean hasUserProfiles = false;
+        int indexCount = 0;
+
+        for (String sql : executedSqlList) {
+            String upper = sql.toUpperCase();
+            if (upper.contains("CREATE TABLE") && upper.contains("EMERGENCY_CONTACTS")) {
+                hasEmergencyContacts = true;
+                assertTrue(upper.contains("USERID"));
+                assertTrue(upper.contains("CONTACTNAME"));
+                assertTrue(upper.contains("PHONENUMBER"));
+                assertTrue(upper.contains("ISPRIMARY"));
+            }
+            if (upper.contains("CREATE TABLE") && upper.contains("USER_PROFILES")) {
+                hasUserProfiles = true;
+                assertTrue(upper.contains("USERID"));
+                assertTrue(upper.contains("EMAIL"));
+                assertTrue(upper.contains("FULLNAME"));
+                assertTrue(upper.contains("ROLE"));
+                assertTrue(upper.contains("MEDICALNOTES"));
+            }
+            if (upper.contains("CREATE INDEX")) {
+                indexCount++;
+            }
+        }
+
+        assertTrue("Must create emergency_contacts table", hasEmergencyContacts);
+        assertTrue("Must create user_profiles table", hasUserProfiles);
+        assertTrue("Must create indexes on emergency_contacts", indexCount >= 2);
+    }
+
     @Test
     public void testFullSequentialUpgradeChain_PreservesSchemaIntegrity() {
         executedSqlList.clear();
@@ -177,6 +219,7 @@ public class RoomMigrationTest {
         BlackoutDatabase.MIGRATION_1_2.migrate(mockDatabase);
         BlackoutDatabase.MIGRATION_2_3.migrate(mockDatabase);
         BlackoutDatabase.MIGRATION_3_4.migrate(mockDatabase);
+        BlackoutDatabase.MIGRATION_4_5.migrate(mockDatabase);
 
         List<String> tablesCreated = new ArrayList<>();
         for (String sql : executedSqlList) {
@@ -197,6 +240,8 @@ public class RoomMigrationTest {
         assertTrue("Must create trusted_signing_keys", tablesCreated.contains("TRUSTED_SIGNING_KEYS"));
         assertTrue("Must create warning_relay_history", tablesCreated.contains("WARNING_RELAY_HISTORY"));
         assertTrue("Must create warning_revisions", tablesCreated.contains("WARNING_REVISIONS"));
+        assertTrue("Must create emergency_contacts", tablesCreated.contains("EMERGENCY_CONTACTS"));
+        assertTrue("Must create user_profiles", tablesCreated.contains("USER_PROFILES"));
 
         // Verify none of the migrations execute DROP TABLE or destructive statements
         for (String sql : executedSqlList) {

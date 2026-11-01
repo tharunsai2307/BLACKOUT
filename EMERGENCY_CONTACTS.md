@@ -74,3 +74,4 @@ erDiagram
   - Radio/Checkbox allows designating the contact as Primary.
 - **`EmergencyContactAdapter.java`**:
   - High-performance RecyclerView adapter with smooth action dispatching (`onEdit`, `onDelete`).
+

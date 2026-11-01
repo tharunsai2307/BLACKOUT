@@ -54,3 +54,4 @@ Executed via Vitest (`web/src/test/rbac.test.ts`):
 1. **Guest SOS Guarantee**: Tests confirm that a user in Guest mode can generate, store, and relay distress signals over Google Nearby Connections without ever having registered.
 2. **Token Security**: Tokens are stored strictly in private Android `SharedPreferences` and are never logged or exposed in unencrypted payloads.
 3. **Database Integrity**: All SQLite foreign keys and indexes were verified to execute without syntax or type conflicts.
+

@@ -58,3 +58,4 @@ A user achieving 100% preparedness provides first responders with the necessary 
 - Writes changes immediately to the local Room database via `EmergencyRepository.saveUserProfile()`.
 - Dispatches asynchronous update request to Supabase GoTrue REST endpoint `/rest/v1/user_profiles` when online.
 - Safely reports offline success if network is absent without interrupting the user.
+

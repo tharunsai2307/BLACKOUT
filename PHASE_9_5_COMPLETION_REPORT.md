@@ -72,3 +72,4 @@ Throughout Phase 9.5, BLACKOUT’s foundational promise was strictly preserved: 
 6. [Database Migration Ledger & Schema Evolution](file:///c:/Users/Hp/Music/My%20Projects/Java%20Capstone/DATABASE_MIGRATIONS.md)
 7. [Offline Synchronization Architecture](file:///c:/Users/Hp/Music/My%20Projects/Java%20Capstone/OFFLINE_SYNCHRONIZATION.md)
 8. [Project README](file:///c:/Users/Hp/Music/My%20Projects/Java%20Capstone/README.md)
+

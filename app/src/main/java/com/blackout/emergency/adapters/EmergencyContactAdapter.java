@@ -87,3 +87,4 @@ public class EmergencyContactAdapter extends RecyclerView.Adapter<EmergencyConta
         }
     }
 }
+

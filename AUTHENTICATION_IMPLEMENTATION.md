@@ -125,3 +125,4 @@ if (!error && data?.user) {
 ```
 
 This ensures strict role isolation and prevents unauthorized exposure of tactical emergency incident data.
+

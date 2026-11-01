@@ -112,3 +112,4 @@ graph LR
   - Users can SELECT, INSERT, UPDATE, and DELETE only their own emergency contacts (`user_id = auth.uid()`).
   - Command Center Operators can SELECT emergency contacts associated with distressed alerts for emergency notification dispatch.
 - **Trigger**: `public.handle_new_user()` provisions a default `'CITIZEN'` profile upon user creation in `auth.users`.
+

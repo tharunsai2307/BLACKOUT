@@ -51,3 +51,4 @@ public interface EmergencyContactDao {
     @Query("UPDATE emergency_contacts SET isPrimary = 0 WHERE userId = :userId")
     void clearPrimaryStatusForUser(String userId);
 }
+

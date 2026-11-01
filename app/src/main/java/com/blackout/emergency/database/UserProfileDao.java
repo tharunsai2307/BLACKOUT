@@ -31,3 +31,4 @@ public interface UserProfileDao {
     @Query("DELETE FROM user_profiles")
     void clearAll();
 }
+

@@ -34,6 +34,7 @@ public class SupabaseAuthClient {
     private final ExecutorService executor;
     private final Handler mainHandler;
     private HttpConnectionProvider connectionProvider;
+    private boolean directExecution = false;
 
     public interface HttpConnectionProvider {
         HttpURLConnection openConnection(URL url) throws IOException;
@@ -83,11 +84,17 @@ public class SupabaseAuthClient {
         this.connectionProvider = provider;
     }
 
+    @VisibleForTesting
+    public void setDirectExecution(boolean direct) {
+        this.directExecution = direct;
+    }
+
     private void postToMain(Runnable r) {
-        if (mainHandler != null) {
-            mainHandler.post(r);
-        } else {
+        if (r == null) return;
+        if (directExecution || mainHandler == null) {
             r.run();
+        } else {
+            mainHandler.post(r);
         }
     }
 
@@ -191,6 +198,54 @@ public class SupabaseAuthClient {
                 }
             } catch (Exception e) {
                 postToMain(() -> callback.onFailure(e.getMessage() != null ? e.getMessage() : "Network failure during login attempt"));
+            }
+        });
+    }
+
+    /**
+     * Refresh an expired access token using refresh token (/auth/v1/token?grant_type=refresh_token).
+     */
+    public void refreshAccessToken(@NonNull String refreshToken, @NonNull AuthCallback callback) {
+        executor.execute(() -> {
+            try {
+                URL url = new URL(baseUrl + "/auth/v1/token?grant_type=refresh_token");
+                HttpURLConnection conn = connectionProvider.openConnection(url);
+                conn.setRequestMethod("POST");
+                conn.setConnectTimeout(TIMEOUT_MS);
+                conn.setReadTimeout(TIMEOUT_MS);
+                conn.setDoOutput(true);
+                conn.setRequestProperty("apikey", anonKey);
+                conn.setRequestProperty("Content-Type", "application/json");
+
+                JSONObject body = new JSONObject();
+                body.put("refresh_token", refreshToken.trim());
+
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                }
+
+                int statusCode = conn.getResponseCode();
+                String responseBody = readResponse(conn, statusCode);
+
+                if (statusCode >= 200 && statusCode < 300) {
+                    JSONObject json = new JSONObject(responseBody);
+                    String newAccessToken = json.getString("access_token");
+                    String newRefreshToken = json.optString("refresh_token", refreshToken);
+
+                    JSONObject userObj = json.optJSONObject("user");
+                    String userId = userObj != null ? userObj.optString("id", "") : "";
+                    String userEmail = userObj != null ? userObj.optString("email", "") : "";
+
+                    JSONObject userMetadata = userObj != null ? userObj.optJSONObject("user_metadata") : null;
+                    String fullName = userMetadata != null ? userMetadata.optString("full_name", "BLACKOUT Citizen") : "BLACKOUT Citizen";
+
+                    postToMain(() -> callback.onSuccess(newAccessToken, newRefreshToken, userId, userEmail, fullName, "CITIZEN"));
+                } else {
+                    String errorMsg = parseErrorMessage(responseBody, "Session expired or refresh token invalid (HTTP " + statusCode + ")");
+                    postToMain(() -> callback.onFailure(errorMsg));
+                }
+            } catch (Exception e) {
+                postToMain(() -> callback.onFailure(e.getMessage() != null ? e.getMessage() : "Network failure during token refresh"));
             }
         });
     }
@@ -416,3 +471,4 @@ public class SupabaseAuthClient {
         return defaultMsg;
     }
 }
+

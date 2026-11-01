@@ -72,3 +72,4 @@ sequenceDiagram
 - **Zero-Trust Network Perimeter**: Android devices treat all received mesh packets as untrusted until validated against canonical schema and signature verifications.
 - **Role Isolation**: Citizen accounts created on mobile are strictly blocked from authenticating to the React Command Center.
 - **Offline Integrity**: Room database schema migrations are non-destructive, guaranteeing user SOS records and emergency contacts are never deleted during app upgrades.
+

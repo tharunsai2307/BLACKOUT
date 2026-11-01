@@ -70,3 +70,4 @@ flowchart TD
 - **Adaptive Mesh Duty Cycle**: P2P discovery modulates radio cycles based on battery state and peer density.
 - **Payload Minimization**: Nearby Connections payloads avoid redundant envelope data, keeping single-packet transfers under standard MTU thresholds.
 - **WorkManager Scheduling**: Background warning synchronization runs via `PeriodicWorkRequest` configured with `NetworkType.CONNECTED` constraints to preserve battery.
+

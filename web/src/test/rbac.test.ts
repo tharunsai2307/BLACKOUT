@@ -54,4 +54,13 @@ describe('Role-Based Access Control (RBAC) Perms', () => {
     expect(perms.canViewAudit).toBe(false);
     expect(perms.isSuperAdmin).toBe(false);
   });
+
+  it('CITIZEN role has zero administrative or operational permissions', () => {
+    const perms = checkRolePermissions('CITIZEN');
+    expect(perms.canVerify).toBe(false);
+    expect(perms.canDispatch).toBe(false);
+    expect(perms.canPublishWarnings).toBe(false);
+    expect(perms.canViewAudit).toBe(false);
+    expect(perms.isSuperAdmin).toBe(false);
+  });
 });
