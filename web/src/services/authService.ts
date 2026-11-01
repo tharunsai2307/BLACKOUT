@@ -46,6 +46,13 @@ export const authService = {
       if (!error && data?.user) {
         const profile = await this.getUserProfile(data.user.id, data.user.email);
         if (profile) {
+          if (profile.role === 'CITIZEN') {
+            await supabase.auth.signOut();
+            return {
+              profile: null,
+              error: 'Access Restricted: Citizen accounts are not authorized to access the Emergency Operations Command Center. Please use the BLACKOUT Android mobile application.',
+            };
+          }
           localStorage.removeItem(LOCAL_SESSION_KEY);
           await auditService.logAction({
             actorId: profile.id,

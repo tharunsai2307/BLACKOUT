@@ -3,7 +3,8 @@ export type AppRole =
   | 'CONTROL_ROOM_OPERATOR'
   | 'FIELD_RESPONSE_COORDINATOR'
   | 'PUBLIC_WARNING_PUBLISHER'
-  | 'VIEWER';
+  | 'VIEWER'
+  | 'CITIZEN';
 
 export type EmergencyPriority = 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
 
@@ -72,6 +73,11 @@ export interface UserProfile {
   badge_number?: string | null;
   organization: string;
   is_active: boolean;
+  phone?: string | null;
+  blood_type?: string | null;
+  country?: string | null;
+  preferred_language?: string | null;
+  medical_notes?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -192,4 +198,15 @@ export interface GatewayUploadHistory {
   upload_status: 'SUCCESS' | 'DUPLICATE' | 'REJECTED' | 'FAILED';
   error_code?: string | null;
   response_reference: string;
+}
+
+export interface EmergencyContact {
+  id: string;
+  user_id: string;
+  contact_name: string;
+  contact_phone: string;
+  relationship: string;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
 }

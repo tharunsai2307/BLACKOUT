@@ -90,3 +90,4 @@ In disaster response and emergency coordination, raw decimal coordinates (e.g. `
 - **Free Plan Allowance**: 3,000 requests/day, max 5 requests/second.
 - **Rate Limit Handling (HTTP 429)**: The client catches HTTP 429 and throws a friendly notification (`Geoapify rate limit exceeded. Please wait before retrying.`) while continuing to display the pristine raw GPS coordinates.
 - **Log Masking**: API keys are stripped from all browser `console` logs and backend Edge Function logs.
+

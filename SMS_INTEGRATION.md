@@ -120,3 +120,4 @@ Before sending SMS in India, organizations must complete formal Distributed Ledg
 3. **Template Approval**: Submit the 3 emergency templates above. Ensure variable placeholders (`{#var#}`) match the parameters.
 4. **Consent Scrubbing**: Register consent templates for emergency contact notifications.
 5. **DND Exemption**: Service Implicit classification ensures emergency SMS messages bypass Do-Not-Disturb (DND) scrubbers to reach recipients during critical emergencies.
+

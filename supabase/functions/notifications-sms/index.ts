@@ -142,6 +142,74 @@ export class GenericWebhookSmsProvider implements ISmsProvider {
   }
 }
 
+// 3. Official Twilio REST API SMS Provider
+export class TwilioSmsProvider implements ISmsProvider {
+  name = "TWILIO";
+  private accountSid: string;
+  private apiKeySid: string;
+  private apiSecret: string;
+  private fromNumber: string;
+
+  constructor(accountSid: string, apiKeySid: string, apiSecret: string, fromNumber: string) {
+    this.accountSid = accountSid;
+    this.apiKeySid = apiKeySid;
+    this.apiSecret = apiSecret;
+    this.fromNumber = fromNumber;
+  }
+
+  async send(recipientPhone: string, messageBody: string): Promise<SmsProviderResult> {
+    const start = Date.now();
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`;
+      const basicAuth = btoa(`${this.apiKeySid}:${this.apiSecret}`);
+
+      const formData = new URLSearchParams();
+      formData.append("To", recipientPhone);
+      formData.append("From", this.fromNumber);
+      formData.append("Body", messageBody);
+
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${basicAuth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      const latencyMs = Date.now() - start;
+      const data = await resp.json().catch(() => ({}));
+
+      if (!resp.ok) {
+        return {
+          status: "FAILED",
+          errorCode: data.code ? `TWILIO_${data.code}` : `HTTP_${resp.status}`,
+          errorMessage: data.message || `Twilio dispatch failed with HTTP ${resp.status}`,
+          latencyMs,
+        };
+      }
+
+      return {
+        status: "PROVIDER_ACCEPTED",
+        providerReference: data.sid || "TWILIO-ACCEPTED",
+        latencyMs,
+      };
+    } catch (err: any) {
+      return {
+        status: "FAILED",
+        errorCode: err.name === "AbortError" ? "TIMEOUT" : "NETWORK_ERROR",
+        errorMessage: err.message || "Failed to communicate with Twilio upstream gateway",
+        latencyMs: Date.now() - start,
+      };
+    }
+  }
+}
+
 // ============================================================================
 // APPROVED EMERGENCY TEMPLATE CATALOG (DLT-COMPLIANT)
 // ============================================================================
@@ -333,11 +401,18 @@ serve(async (req: Request) => {
     }
 
     // 8. Select and Instantiate Provider
+    const twilioAccountSid = Deno.env.get("TWILIO_ACCOUNT_SID") || Deno.env.get("TWILIO_API_KEY_SID");
+    const twilioApiKeySid = Deno.env.get("TWILIO_API_KEY_SID");
+    const twilioApiSecret = Deno.env.get("TWILIO_API_SECRET");
+    const twilioFromNumber = Deno.env.get("TWILIO_FROM_NUMBER") || "+15005550006";
+
     const webhookUrl = Deno.env.get("SMS_GATEWAY_URL");
     const webhookKey = Deno.env.get("SMS_GATEWAY_API_KEY");
     let provider: ISmsProvider;
 
-    if (webhookUrl && webhookKey) {
+    if (twilioApiKeySid && twilioApiSecret && twilioAccountSid) {
+      provider = new TwilioSmsProvider(twilioAccountSid, twilioApiKeySid, twilioApiSecret, twilioFromNumber);
+    } else if (webhookUrl && webhookKey) {
       provider = new GenericWebhookSmsProvider(webhookUrl, webhookKey);
     } else {
       // Safe fallback to deterministic Mock Provider for non-production environments
@@ -423,3 +498,4 @@ serve(async (req: Request) => {
     });
   }
 });
+

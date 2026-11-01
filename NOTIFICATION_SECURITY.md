@@ -64,3 +64,4 @@ All SMS tables in Supabase PostgreSQL enforce strict Row-Level Security:
 | `FIELD_RESPONSE_COORDINATOR`| Read Only | Insert / Read | Read-Only | Read-Only |
 | `VIEWER` | Blocked (0 rows) | Blocked (0 rows) | Blocked (0 rows) | Read-Only |
 | `anon` (Unauthenticated) | Blocked (0 rows) | Blocked (0 rows) | Blocked (0 rows) | Blocked (0 rows) |
+

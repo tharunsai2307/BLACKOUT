@@ -165,3 +165,4 @@ class GeoapifyService {
 }
 
 export const geoapifyService = new GeoapifyService();
+

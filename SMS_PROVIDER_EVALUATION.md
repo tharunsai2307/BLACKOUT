@@ -78,3 +78,4 @@ BLACKOUT implements a **Provider-Independent SMS Subsystem** (`ISmsProvider`) th
 1. **India Operations**: Approved TRAI DLT Gateways (Airtel IQ, Jio Enterprise, Tanla / ValueFirst, Gupshup) with registered Entity ID, Header (`BLKOUT`), and pre-approved DLT templates.
 2. **Global Operations**: Licensed A2P SMS aggregators (Twilio, AWS SNS, Infobip, Sinch) authenticated via secure server-side API credentials.
 3. **Development / Pilot Testing**: Deterministic `MockSmsProvider` that logs transaction payloads without consuming carrier credits or spamming phone networks.
+

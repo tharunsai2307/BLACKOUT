@@ -210,3 +210,37 @@ For complete operations portal documentation, consult:
 - **Phase 9 (Complete)**: Full System Integration, Production Deployment & Release. Verified end-to-end integration across Android, Supabase Backend, and Web Operations Portal. Compiled R8-minified release APK (`app-release-unsigned.apk`, 7.28 MB) and release Android App Bundle (`app-release.aab`, 7.65 MB). Built production Web assets (`web/dist/`). Verified 143/143 Android tests and 28/28 Web tests. Authored all deployment, release signing, monitoring, disaster recovery, and pilot readiness documentation.
 - **Phase 9 Add-On (Complete)**: Geoapify Location Services & Provider-Independent SMS Notifications. Integrated Geoapify reverse geocoding (human-readable address enrichment while preserving original GPS fixes), forward search, and tactical dark map styling with fallback to OSM. Evaluated and formally rejected Moli13337/sms-api scraper repository due to lack of payload control and TRAI/DLT legal non-compliance. Architected provider-independent server-side SMS engine (ISmsProvider, MockSmsProvider, GenericWebhookSmsProvider) with consent tracking, rate limiting, idempotency, and DLT templates. Verified 46 passing Web unit tests + 143 passing Android unit tests.
 
+
+---
+
+## 👥 User Authentication, Profile Management & Redesign (Phase 9.5)
+
+Phase 9.5 elevates BLACKOUT from an emergency communications tool into a complete, secure, cross-platform emergency response ecosystem connecting citizens and command personnel:
+
+### 1. End-to-End Native Android Authentication
+- **Tactical Splash Screen (`SplashActivity`)**: Automatically directs first-time responders to onboarding, signed-out users to login, and returning active sessions or guests straight to the mission control dashboard.
+- **Educational Onboarding (`WelcomeActivity`)**: Visualizes core capabilities (Instant Offline SOS, Device-to-Device Mesh, and Cryptographically Signed Warnings) with options to Create Account, Log In, or Continue as Guest.
+- **Citizen Registration (`RegisterActivity`)**: Input validation, password strength requirements, terms acceptance, GoTrue cloud provisioning, and automatic local Room caching.
+- **Secure Sign-In (`LoginActivity`)**: Authenticates against Supabase, stores session JWTs, and automatically pulls down remote profiles and emergency contacts to populate the local database.
+- **Self-Service Password Recovery (`ForgotPasswordActivity`)**: Dispatches password reset emails via Supabase GoTrue Auth.
+- **Zero-Login Emergency Guarantee**: SOS creation, Room database storage, and Google Nearby Connections P2P mesh relay function **100% without an account or internet** via Guest mode.
+
+### 2. Modern 5-Tab Application Redesign
+- **Tab 1: Home (`HomeFragment`)**: Mission control dashboard, personalized greeting, live Nearby mesh status with peer count, live Gateway connectivity indicator, and emergency activity feed.
+- **Tab 2: SOS (`SosFragment`)**: One-tap dedicated access to the life-critical emergency beacon preparation interface with hardware GPS coordinates.
+- **Tab 3: Alerts (`AlertsFragment`)**: Cryptographically verified civil defense public warnings feed with Ed25519 signature audit details and validity countdowns.
+- **Tab 4: History (`HistoryFragment`)**: Complete store-carry-and-forward relay audit log, showing local saved, received, and multi-hop relayed packets.
+- **Tab 5: Profile (`ProfileFragment`)**: Responder identity card, tactical role badge, profile completeness meter, quick-launch for emergency contacts and medical profile, mesh telemetry radar shortcut, and session management.
+
+### 3. Personal & Medical Profiles (Room v5 Dual-Tier Persistence)
+- **Emergency Medical Telemetry**: Captures blood group, emergency contact phone, jurisdiction, preferred language, and critical medical notes (allergies, chronic conditions, prescription requirements).
+- **Offline-First Guarantee**: Profile data is committed instantly to local Room database (`user_profiles`), ensuring availability even during complete grid failure.
+- **Cloud Gateway Sync**: Automatically synchronizes with central Supabase database when connectivity is restored.
+
+### 4. Emergency Contacts (ICE - In Case of Emergency)
+- **Designated Safety Network**: Citizens can register primary and secondary emergency contacts with E.164 phone numbers.
+- **Automated SMS Dispatch Readiness**: Designated primary contacts are notified automatically via the BLACKOUT SMS notification subsystem (`/functions/v1/notifications-sms`) when an SOS beacon reaches an Internet Gateway.
+- **Truthful Status Reporting**: The application never falsely reports that an SMS was delivered when offline; status explicitly indicates "Queued for gateway reachability".
+
+### 5. Cross-Platform Role Separation
+- **Strict Perimeter Isolation**: Citizen accounts created via mobile are strictly restricted from accessing the React Command Center Portal (`web/src/services/authService.ts`), preventing unauthorized access to tactical emergency incident operations.

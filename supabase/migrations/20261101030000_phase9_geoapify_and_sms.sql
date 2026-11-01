@@ -199,3 +199,4 @@ CREATE POLICY sms_delivery_attempts_select ON public.sms_delivery_attempts
             AND ur.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
         )
     );
+

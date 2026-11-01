@@ -24,6 +24,8 @@ public class EmergencyRepository {
 
     private static volatile EmergencyRepository instance;
     private final EmergencyMessageDao messageDao;
+    private final EmergencyContactDao contactDao;
+    private final UserProfileDao profileDao;
     private final ExecutorService executor;
     private final Handler mainHandler;
     private RelayQueueManager relayQueueManager;
@@ -56,6 +58,8 @@ public class EmergencyRepository {
     private EmergencyRepository(Context context) {
         BlackoutDatabase db = BlackoutDatabase.getInstance(context.getApplicationContext());
         this.messageDao = db.emergencyMessageDao();
+        this.contactDao = db.emergencyContactDao();
+        this.profileDao = db.userProfileDao();
         this.executor = Executors.newSingleThreadExecutor();
         this.mainHandler = createSafeMainHandler();
         try {
@@ -88,6 +92,8 @@ public class EmergencyRepository {
                                @Nullable RelayQueueManager relayQueueManager,
                                @Nullable PendingUploadManager pendingUploadManager) {
         this.messageDao = messageDao;
+        this.contactDao = null;
+        this.profileDao = null;
         this.executor = executor;
         this.mainHandler = createSafeMainHandler();
         this.relayQueueManager = relayQueueManager;
@@ -365,5 +371,118 @@ public class EmergencyRepository {
                 }
             }
         });
+    }
+
+    // ========================================================================
+    // EMERGENCY CONTACTS METHODS (Phase 9.5)
+    // ========================================================================
+
+    public void getEmergencyContactsForUser(String userId, Callback<List<EmergencyContactEntity>> callback) {
+        executor.execute(() -> {
+            try {
+                List<EmergencyContactEntity> contacts = contactDao.getContactsForUserSync(userId);
+                postToMain(() -> callback.onComplete(contacts));
+            } catch (Exception e) {
+                postToMain(() -> {
+                    callback.onError(e);
+                    callback.onComplete(new ArrayList<>());
+                });
+            }
+        });
+    }
+
+    public void saveEmergencyContact(EmergencyContactEntity contact, Callback<Boolean> callback) {
+        executor.execute(() -> {
+            try {
+                if (contact.isPrimary()) {
+                    contactDao.clearPrimaryStatusForUser(contact.getUserId());
+                }
+                contactDao.insert(contact);
+                postToMain(() -> callback.onComplete(true));
+            } catch (Exception e) {
+                postToMain(() -> {
+                    callback.onError(e);
+                    callback.onComplete(false);
+                });
+            }
+        });
+    }
+
+    public void deleteEmergencyContact(String contactId, Callback<Boolean> callback) {
+        executor.execute(() -> {
+            try {
+                contactDao.deleteById(contactId);
+                postToMain(() -> callback.onComplete(true));
+            } catch (Exception e) {
+                postToMain(() -> {
+                    callback.onError(e);
+                    callback.onComplete(false);
+                });
+            }
+        });
+    }
+
+    public void getPrimaryEmergencyContact(String userId, Callback<EmergencyContactEntity> callback) {
+        executor.execute(() -> {
+            try {
+                EmergencyContactEntity contact = contactDao.getPrimaryContactSync(userId);
+                postToMain(() -> callback.onComplete(contact));
+            } catch (Exception e) {
+                postToMain(() -> {
+                    callback.onError(e);
+                    callback.onComplete(null);
+                });
+            }
+        });
+    }
+
+    public void getEmergencyContacts(String userId, Callback<List<EmergencyContactEntity>> callback) {
+        executor.execute(() -> {
+            try {
+                List<EmergencyContactEntity> contacts = contactDao.getContactsForUserSync(userId);
+                postToMain(() -> callback.onComplete(contacts));
+            } catch (Exception e) {
+                postToMain(() -> {
+                    callback.onError(e);
+                    callback.onComplete(new java.util.ArrayList<>());
+                });
+            }
+        });
+    }
+
+    // ========================================================================
+    // USER PROFILE METHODS (Phase 9.5)
+    // ========================================================================
+
+    public void getUserProfile(String userId, Callback<UserProfileEntity> callback) {
+        executor.execute(() -> {
+            try {
+                UserProfileEntity profile = profileDao.getProfileSync(userId);
+                postToMain(() -> callback.onComplete(profile));
+            } catch (Exception e) {
+                postToMain(() -> {
+                    callback.onError(e);
+                    callback.onComplete(null);
+                });
+            }
+        });
+    }
+
+    public void saveUserProfile(UserProfileEntity profile, Callback<Boolean> callback) {
+        executor.execute(() -> {
+            try {
+                profileDao.insertOrUpdate(profile);
+                postToMain(() -> callback.onComplete(true));
+            } catch (Exception e) {
+                postToMain(() -> {
+                    callback.onError(e);
+                    callback.onComplete(false);
+                });
+            }
+        });
+    }
+
+    public void saveUserProfile(UserProfileEntity profile) {
+        saveUserProfile(profile, result -> {});
     }
 }

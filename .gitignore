@@ -27,5 +27,12 @@ Thumbs.db
 Desktop.ini
 
 # Local environment secrets
+*.env
+*.env.local
+*.env.*.local
+!*.env.example
 web/.env
 web/.env.local
+supabase/.env
+supabase/.env.local
+app/google-services.json

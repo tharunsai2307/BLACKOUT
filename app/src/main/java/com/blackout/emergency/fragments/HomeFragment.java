@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import com.blackout.emergency.R;
 import com.blackout.emergency.activities.MainActivity;
+import com.blackout.emergency.auth.SessionManager;
 import com.blackout.emergency.database.EmergencyRepository;
 import com.blackout.emergency.gateway.InternetGatewayService;
 import com.blackout.emergency.models.EmergencyMessage;
@@ -42,6 +43,7 @@ public class HomeFragment extends Fragment {
     private TextView tvHomeOfflineNotice;
     private TextView tvHomePeersCount;
     private TextView tvHomePeersSummary;
+    private TextView tvHomeGreeting;
 
     private final InternetGatewayService.ConnectivityListener connectivityListener = (isConnected, networkType) -> {
         if (!isAdded() || getContext() == null) return;
@@ -82,6 +84,7 @@ public class HomeFragment extends Fragment {
         tvHomeOfflineNotice = view.findViewById(R.id.tv_home_offline_notice);
         tvHomePeersCount = view.findViewById(R.id.tv_home_peers_count);
         tvHomePeersSummary = view.findViewById(R.id.tv_home_peers_summary);
+        tvHomeGreeting = view.findViewById(R.id.tv_home_greeting);
 
         // Prominent Emergency SOS Navigation
         View.OnClickListener sosClickListener = v -> {
@@ -95,7 +98,7 @@ public class HomeFragment extends Fragment {
         // Quick Navigation to Nearby Mesh Screen
         btnGotoNearby.setOnClickListener(v -> {
             if (getActivity() instanceof MainActivity) {
-                ((MainActivity) getActivity()).selectTab(R.id.navigation_nearby);
+                ((MainActivity) getActivity()).openMeshRadar();
             }
         });
 
@@ -151,6 +154,16 @@ public class HomeFragment extends Fragment {
 
         InternetGatewayService gateway = InternetGatewayService.getInstance(requireContext());
         boolean isGatewayOnline = gateway.isInternetAvailable();
+
+        SessionManager sessionManager = SessionManager.getInstance(requireContext());
+        if (tvHomeGreeting != null) {
+            if (sessionManager.isLoggedIn()) {
+                String name = sessionManager.getFullName();
+                tvHomeGreeting.setText("Welcome, " + (name != null && !name.isEmpty() ? name : "Responder"));
+            } else {
+                tvHomeGreeting.setText("Offline Guest Mode • Mesh Ready");
+            }
+        }
 
         if (connectedPeer != null) {
             viewHomeStatusDot.setBackgroundResource(R.drawable.bg_status_dot_active);

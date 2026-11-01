@@ -10,8 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 /**
  * Main Room Database for the BLACKOUT offline-first emergency platform.
- * Version 4: Added Phase 7 Digitally Signed Public Emergency Warnings, Revisions,
- * Trusted Signing Keys, Warning Relay History, Sync State, and Revocations.
+ * Version 5: Added Phase 9.5 Local User Profiles & Emergency Contacts.
  */
 @Database(
         entities = {
@@ -24,9 +23,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
                 TrustedSigningKeyEntity.class,
                 WarningRelayHistoryEntity.class,
                 WarningSyncStateEntity.class,
-                WarningRevocationEntity.class
+                WarningRevocationEntity.class,
+                EmergencyContactEntity.class,
+                UserProfileEntity.class
         },
-        version = 4,
+        version = 5,
         exportSchema = false
 )
 public abstract class BlackoutDatabase extends RoomDatabase {
@@ -47,10 +48,13 @@ public abstract class BlackoutDatabase extends RoomDatabase {
     public abstract WarningSyncStateDao warningSyncStateDao();
     public abstract WarningRevocationDao warningRevocationDao();
 
+    // Phase 9.5 DAOs
+    public abstract EmergencyContactDao emergencyContactDao();
+    public abstract UserProfileDao userProfileDao();
+
     /**
      * Migration from Version 1 to Version 2:
      * Adds Phase 4 multi-hop store-carry-and-forward relay queue and delivery history.
-     * Preserves all existing SOS alerts in emergency_messages.
      */
     public static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -86,7 +90,6 @@ public abstract class BlackoutDatabase extends RoomDatabase {
     /**
      * Migration from Version 2 to Version 3:
      * Adds Phase 5 internet gateway upload queue.
-     * Preserves all existing SOS alerts, relay queue, and relay history records.
      */
     public static final Migration MIGRATION_2_3 = new Migration(2, 3) {
         @Override
@@ -110,7 +113,6 @@ public abstract class BlackoutDatabase extends RoomDatabase {
     /**
      * Migration from Version 3 to Version 4:
      * Adds Phase 7 public warnings and digital signature infrastructure.
-     * Preserves all existing SOS alerts, relay queue, and upload records.
      */
     public static final Migration MIGRATION_3_4 = new Migration(3, 4) {
         @Override
@@ -158,29 +160,30 @@ public abstract class BlackoutDatabase extends RoomDatabase {
                     + "description TEXT, "
                     + "category TEXT, "
                     + "severity TEXT, "
-                    + "status TEXT, "
                     + "issuingAuthority TEXT, "
-                    + "signingKeyId TEXT, "
-                    + "signatureAlgorithm TEXT, "
-                    + "signature TEXT, "
-                    + "canonicalPayload TEXT, "
+                    + "issuedAt INTEGER NOT NULL, "
+                    + "effectiveAt INTEGER NOT NULL, "
+                    + "expiresAt INTEGER NOT NULL, "
                     + "affectedRegionsJson TEXT, "
                     + "latitude REAL, "
                     + "longitude REAL, "
                     + "radiusMeters REAL, "
                     + "language TEXT, "
-                    + "issuedAt INTEGER NOT NULL, "
-                    + "effectiveAt INTEGER NOT NULL, "
-                    + "expiresAt INTEGER NOT NULL, "
-                    + "receivedAt INTEGER NOT NULL)");
+                    + "status TEXT, "
+                    + "signingKeyId TEXT, "
+                    + "signatureAlgorithm TEXT, "
+                    + "signature TEXT, "
+                    + "canonicalPayload TEXT, "
+                    + "verificationStatus TEXT, "
+                    + "archivedAt INTEGER NOT NULL, "
+                    + "payloadHash TEXT)");
 
-            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_warning_revisions_warningId_revision ON warning_revisions (warningId, revision)");
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_warning_revisions_warningId ON warning_revisions (warningId)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_warning_revisions_warningId_revision ON warning_revisions (warningId, revision)");
 
             // 3. Table: trusted_signing_keys
             db.execSQL("CREATE TABLE IF NOT EXISTS trusted_signing_keys ("
                     + "keyId TEXT NOT NULL PRIMARY KEY, "
-                    + "publicKeyBase64 TEXT, "
+                    + "publicKeyBase64 TEXT NOT NULL, "
                     + "algorithm TEXT, "
                     + "authorityId TEXT, "
                     + "validFrom INTEGER NOT NULL, "
@@ -224,6 +227,45 @@ public abstract class BlackoutDatabase extends RoomDatabase {
         }
     };
 
+    /**
+     * Migration from Version 4 to Version 5:
+     * Adds Phase 9.5 emergency contacts and user profile cache.
+     * Preserves all existing SOS alerts, public warnings, and upload records.
+     */
+    public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            // 1. Table: emergency_contacts
+            db.execSQL("CREATE TABLE IF NOT EXISTS emergency_contacts ("
+                    + "id TEXT NOT NULL PRIMARY KEY, "
+                    + "userId TEXT NOT NULL, "
+                    + "contactName TEXT NOT NULL, "
+                    + "phoneNumber TEXT NOT NULL, "
+                    + "relationship TEXT, "
+                    + "isPrimary INTEGER NOT NULL DEFAULT 0, "
+                    + "syncStatus TEXT NOT NULL DEFAULT 'SYNCED', "
+                    + "updatedAt INTEGER NOT NULL)");
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_emergency_contacts_userId ON emergency_contacts (userId)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_emergency_contacts_isPrimary ON emergency_contacts (isPrimary)");
+
+            // 2. Table: user_profiles
+            db.execSQL("CREATE TABLE IF NOT EXISTS user_profiles ("
+                    + "userId TEXT NOT NULL PRIMARY KEY, "
+                    + "fullName TEXT NOT NULL, "
+                    + "email TEXT NOT NULL, "
+                    + "phoneNumber TEXT, "
+                    + "countryCode TEXT, "
+                    + "countryRegion TEXT, "
+                    + "profilePhotoUrl TEXT, "
+                    + "preferredLanguage TEXT, "
+                    + "medicalNotes TEXT, "
+                    + "isProfileCompleted INTEGER NOT NULL DEFAULT 0, "
+                    + "role TEXT NOT NULL DEFAULT 'CITIZEN', "
+                    + "updatedAt INTEGER NOT NULL)");
+        }
+    };
+
     public static synchronized BlackoutDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(
@@ -231,7 +273,7 @@ public abstract class BlackoutDatabase extends RoomDatabase {
                     BlackoutDatabase.class,
                     DATABASE_NAME
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build();
         }
         return instance;

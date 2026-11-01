@@ -5,9 +5,9 @@
         android:icon="@drawable/ic_nav_home"
         android:title="@string/nav_home" />
     <item
-        android:id="@+id/navigation_nearby"
-        android:icon="@drawable/ic_nav_nearby"
-        android:title="@string/nav_nearby" />
+        android:id="@+id/navigation_sos"
+        android:icon="@drawable/ic_nav_sos"
+        android:title="SOS" />
     <item
         android:id="@+id/navigation_alerts"
         android:icon="@drawable/ic_nav_alerts"
@@ -17,7 +17,7 @@
         android:icon="@drawable/ic_nav_history"
         android:title="@string/nav_history" />
     <item
-        android:id="@+id/navigation_settings"
-        android:icon="@drawable/ic_nav_settings"
-        android:title="@string/nav_settings" />
+        android:id="@+id/navigation_profile"
+        android:icon="@drawable/ic_nav_profile"
+        android:title="Profile" />
 </menu>

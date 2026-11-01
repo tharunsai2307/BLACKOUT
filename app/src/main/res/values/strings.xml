@@ -195,4 +195,49 @@
     <string name="action_close">Close</string>
     <string name="feature_coming_soon_title">Roadmap Notice</string>
     <string name="feature_coming_soon_desc">This feature is scheduled for Phase 3. Phase 2 focuses on GPS location capture and offline Room persistence.</string>
+
+    <!-- Phase 9.5 Navigation & Bottom Tabs -->
+    <string name="nav_sos">SOS</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Phase 9.5 Welcome & Onboarding -->
+    <string name="welcome_title">BLACKOUT</string>
+    <string name="welcome_subtitle">Decentralized Emergency Communication</string>
+    <string name="welcome_btn_register">Create Citizen Account</string>
+    <string name="welcome_btn_login">Log In to Account</string>
+    <string name="welcome_btn_guest">Continue as Guest (Emergency Access)</string>
+    <string name="btn_continue_guest">Continue as Guest (Emergency Access)</string>
+    <string name="welcome_disclaimer">BLACKOUT is an independent civilian emergency communication network. It does NOT automatically dispatch police, fire rescue, or municipal ambulance services without authorized civil defense integration.</string>
+
+    <!-- Phase 9.5 Authentication -->
+    <string name="auth_title_login">Citizen Login</string>
+    <string name="auth_title_register">Create Account</string>
+    <string name="auth_title_forgot_password">Password Recovery</string>
+    <string name="auth_field_fullname">Full Legal Name</string>
+    <string name="auth_field_email">Email Address</string>
+    <string name="auth_field_password">Account Password</string>
+    <string name="auth_field_confirm_password">Confirm Password</string>
+    <string name="auth_field_phone">Mobile Number (Optional)</string>
+    <string name="auth_terms_checkbox">I accept the Terms of Service and Privacy Policy</string>
+    <string name="auth_btn_submit_login">Log In</string>
+    <string name="auth_btn_submit_register">Register Citizen Account</string>
+    <string name="auth_btn_submit_forgot">Send Recovery Email</string>
+    <string name="auth_link_forgot_password">Forgot Password?</string>
+    <string name="auth_link_register">Don\'t have an account? Register</string>
+    <string name="auth_link_login">Already have an account? Log In</string>
+
+    <!-- Phase 9.5 Profile & Emergency Contacts -->
+    <string name="profile_title">Citizen Profile</string>
+    <string name="profile_completion">Profile Completion: %1$d%%</string>
+    <string name="profile_section_contacts">Emergency Contacts</string>
+    <string name="profile_btn_manage_contacts">Manage Emergency Contacts</string>
+    <string name="profile_section_personal">Personal &amp; Medical Details</string>
+    <string name="profile_btn_edit_profile">Edit Profile Information</string>
+    <string name="profile_btn_logout">Log Out of Account</string>
+    <string name="profile_btn_delete_account">Delete Account</string>
+    <string name="profile_medical_notes_hint">Private medical conditions, blood group, allergies (Encrypted on device)</string>
+    <string name="contacts_title">Emergency Contacts</string>
+    <string name="contacts_btn_add">Add Contact</string>
+    <string name="contacts_empty">No emergency contacts added yet. Add trusted contacts who should receive updates when you broadcast an SOS.</string>
+
 </resources>

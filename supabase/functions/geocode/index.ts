@@ -187,3 +187,4 @@ serve(async (req: Request) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
+

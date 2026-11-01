@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp">
+
+        <ImageButton
+            android:id="@+id/btn_edit_profile_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            android:src="@drawable/ic_back"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/tv_edit_profile_header"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Personal &amp; Medical Profile"
+            android:textColor="@color/text_primary"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btn_edit_profile_back" />
+
+        <TextView
+            android:id="@+id/tv_edit_profile_sub"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="This information is stored offline in Room and attached to emergency broadcasts to guide responders."
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_edit_profile_header" />
+
+        <!-- Full Name Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_edit_name"
+            style="@style/Widget.BLACKOUT.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:hint="Full Legal Name"
+            app:layout_constraintTop_toBottomOf="@id/tv_edit_profile_sub">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_edit_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPersonName"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Phone Number Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_edit_phone"
+            style="@style/Widget.BLACKOUT.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Phone Number"
+            app:layout_constraintTop_toBottomOf="@id/til_edit_name">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_edit_phone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="phone"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Blood Type Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_edit_blood_type"
+            style="@style/Widget.BLACKOUT.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Blood Type (e.g. O+, A+, B-, AB+)"
+            app:layout_constraintTop_toBottomOf="@id/til_edit_phone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_edit_blood_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapCharacters"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Country / Region Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_edit_country"
+            style="@style/Widget.BLACKOUT.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Country / Administrative Region"
+            app:layout_constraintTop_toBottomOf="@id/til_edit_blood_type">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_edit_country"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapWords"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Preferred Language Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_edit_language"
+            style="@style/Widget.BLACKOUT.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Preferred Language (e.g. English, Hindi, Spanish)"
+            app:layout_constraintTop_toBottomOf="@id/til_edit_country">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_edit_language"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textCapWords"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Medical Notes & Allergies Input -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/til_edit_medical_notes"
+            style="@style/Widget.BLACKOUT.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Critical Medical Notes, Allergies, or Prescriptions"
+            app:layout_constraintTop_toBottomOf="@id/til_edit_language">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_edit_medical_notes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="top|start"
+                android:inputType="textMultiLine"
+                android:lines="3"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Save Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_edit_profile_save"
+            style="@style/Widget.BLACKOUT.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="28dp"
+            android:text="SAVE PROFILE"
+            app:layout_constraintTop_toBottomOf="@id/til_edit_medical_notes" />
+
+        <ProgressBar
+            android:id="@+id/pb_edit_profile_loading"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:indeterminateTint="@color/teal_accent"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/btn_edit_profile_save"
+            app:layout_constraintEnd_toEndOf="@id/btn_edit_profile_save"
+            app:layout_constraintStart_toStartOf="@id/btn_edit_profile_save"
+            app:layout_constraintTop_toTopOf="@id/btn_edit_profile_save" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
