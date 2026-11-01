@@ -78,3 +78,4 @@ console.log(signature.toString('base64'));
 
 const verified = crypto.verify(null, Buffer.from(canonical, 'utf-8'), publicKey, signature);
 console.log('Node verification result:', verified);
+

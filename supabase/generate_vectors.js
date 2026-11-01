@@ -71,3 +71,4 @@ const expiredWarning = {
 };
 const sig2 = crypto.sign(null, Buffer.from(buildCanonicalString(expiredWarning), 'utf-8'), privateKey);
 console.log('EXPIRED_SIG=' + sig2.toString('base64'));
+

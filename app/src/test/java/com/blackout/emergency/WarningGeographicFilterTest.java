@@ -158,3 +158,4 @@ public class WarningGeographicFilterTest {
         assertEquals(RelevanceLevel.GENERAL_BROADCAST, level);
     }
 }
+

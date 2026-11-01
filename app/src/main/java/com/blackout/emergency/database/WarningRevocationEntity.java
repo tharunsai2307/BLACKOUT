@@ -74,3 +74,4 @@ public class WarningRevocationEntity {
         this.revokedAt = revokedAt;
     }
 }
+

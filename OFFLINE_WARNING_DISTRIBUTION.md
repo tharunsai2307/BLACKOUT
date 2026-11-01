@@ -96,3 +96,4 @@ If an attacker replays an older revision (e.g. attempting to restore a revoked w
 - The receiving node detects `incoming.revision <= existing.revision`.
 - The stale payload is rejected immediately (`ROLLBACK_ATTEMPT`).
 - The active, higher revision remains active.
+

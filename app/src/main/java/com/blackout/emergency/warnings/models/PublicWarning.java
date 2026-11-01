@@ -443,3 +443,4 @@ public class PublicWarning implements Serializable {
         return Objects.hash(warningId, revision);
     }
 }
+

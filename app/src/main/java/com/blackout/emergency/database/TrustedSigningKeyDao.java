@@ -27,3 +27,4 @@ public interface TrustedSigningKeyDao {
     @Query("UPDATE trusted_signing_keys SET keyStatus = 'REVOKED', revokedAt = :revokedAt, revocationReason = :reason WHERE keyId = :keyId")
     void revokeKey(String keyId, long revokedAt, String reason);
 }
+

@@ -24,3 +24,4 @@ public interface WarningRevisionDao {
     @Query("SELECT MAX(revision) FROM warning_revisions WHERE warningId = :warningId")
     Integer getHighestRevisionNumber(String warningId);
 }
+

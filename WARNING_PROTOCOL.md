@@ -170,3 +170,4 @@ Sent when a transmitted warning fails schema validation, verification, or anti-r
 3. **Superseding Rule**: If `revision > existing.revision` and signature verifies, the existing record is moved to `warning_revisions` (immutable archive) and the new revision becomes the active warning.
 4. **Revocation Precedence**: If a valid revocation record is processed for `warningId`, any present or future revisions of that warning are suppressed from user notifications and marked `REVOKED`.
 5. **Key Revocation Rule**: Warnings signed by a key marked `REVOKED` in the trusted key store are rejected with `REVOKED_SIGNING_KEY`.
+

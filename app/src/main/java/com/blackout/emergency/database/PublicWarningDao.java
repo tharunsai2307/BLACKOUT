@@ -57,3 +57,4 @@ public interface PublicWarningDao {
     @Query("SELECT warningId, revision, payloadHash, expiresAt, verificationStatus FROM public_warnings")
     List<InventoryItem> getAllWarningInventory();
 }
+

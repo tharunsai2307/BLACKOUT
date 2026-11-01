@@ -119,3 +119,4 @@ public class WarningNotificationManager {
         prefs.edit().putBoolean("notified_" + notificationKey, true).apply();
     }
 }
+

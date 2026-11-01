@@ -148,3 +148,4 @@ public class WarningDetailDialog extends Dialog {
         btnClose.setOnClickListener(v -> dismiss());
     }
 }
+

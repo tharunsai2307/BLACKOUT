@@ -21,3 +21,4 @@ public interface WarningRevocationDao {
     @Query("SELECT * FROM warning_revocations ORDER BY revokedAt DESC")
     List<WarningRevocationEntity> getAllRevocations();
 }
+

@@ -127,3 +127,4 @@ Every node receiving a warning executes this 10-step verification sequence befor
   - Validity: 2026-01-01 to 2036-01-01.
 - **Trust Continuity**: Subsequent operational keys are distributed via `/functions/v1/warnings/keys` and authenticated by cross-signing or root authority certificates.
 - **Strict Prohibition**: Private keys are never distributed to clients, never included in APK assets, and never committed to version control.
+

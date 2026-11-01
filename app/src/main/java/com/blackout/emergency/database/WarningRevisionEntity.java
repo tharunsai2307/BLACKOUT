@@ -257,3 +257,4 @@ public class WarningRevisionEntity {
         this.receivedAt = receivedAt;
     }
 }
+

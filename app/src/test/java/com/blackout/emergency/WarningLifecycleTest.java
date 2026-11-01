@@ -167,3 +167,4 @@ public class WarningLifecycleTest {
         assertTrue("Warning should detect its own expiration", w.isExpiredNow());
     }
 }
+

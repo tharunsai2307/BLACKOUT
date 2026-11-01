@@ -112,3 +112,4 @@ If a signing key is suspected of compromise:
 2. **Backend Secret Rotation**: Remove the compromised private key seed from backend secrets and replace with a freshly generated pair.
 3. **Revocation Broadcast**: Issue a high-priority signed revocation warning using the backup emergency root key.
 4. **Android Mesh Propagation**: Distribute the key revocation update over Nearby Connections to flush corrupted warnings from offline nodes.
+

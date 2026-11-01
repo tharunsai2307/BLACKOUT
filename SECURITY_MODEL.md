@@ -42,3 +42,4 @@ To prevent attackers from suppressing newer emergency instructions, Room entitie
 - `public_warnings`: Holds the latest active, highest-revision warning per `warningId`.
 - `warning_revisions`: Append-only immutable historical audit ledger preserving all superseded revisions.
 - Attempting to overwrite an active record with an equal or lower revision is rejected at the DAO and repository layers.
+

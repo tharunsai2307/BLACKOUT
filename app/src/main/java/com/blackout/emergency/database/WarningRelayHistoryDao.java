@@ -20,3 +20,4 @@ public interface WarningRelayHistoryDao {
     @Query("SELECT COUNT(*) FROM warning_relay_history WHERE warningId = :warningId AND revision = :revision AND peerDeviceId = :peerDeviceId AND relayAction = 'SENT'")
     int countRelaysToPeer(String warningId, int revision, String peerDeviceId);
 }
+

@@ -356,3 +356,4 @@ public class PublicWarningEntity {
         this.payloadHash = payloadHash;
     }
 }
+

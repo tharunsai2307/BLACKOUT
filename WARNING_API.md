@@ -176,3 +176,4 @@ Every signing, revision, and revocation event generates an append-only entry in 
 - `details`: JSON snapshot of canonical payload hash and key ID.
 - `ip_address`: Network IP of caller.
 - `timestamp`: UTC timestamp.
+

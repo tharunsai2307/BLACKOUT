@@ -17,3 +17,4 @@ public interface WarningSyncStateDao {
     @Query("SELECT * FROM warning_sync_state WHERE syncKey = :syncKey LIMIT 1")
     WarningSyncStateEntity getSyncState(String syncKey);
 }
+
