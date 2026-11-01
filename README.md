@@ -182,6 +182,14 @@ For complete operations portal documentation, consult:
 - [`PHASE_8_TEST_RESULTS.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_TEST_RESULTS.md) — Test execution breakdown: 143 Android unit tests + 28 Web tests passing
 - [`PHASE_8_KNOWN_LIMITATIONS.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_KNOWN_LIMITATIONS.md) — Documentation of physical multi-device boundaries, simulated mesh, and secrets provisioning
 - [`SECURITY_REMEDIATION_LOG.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/SECURITY_REMEDIATION_LOG.md) — Detailed changelog of vulnerabilities and reliability bugs remediated
+- [`PHASE_9_IMPLEMENTATION.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_9_IMPLEMENTATION.md) — Phase 9 Full System Integration, Deployment & Release Overview
+- [`PHASE_9_DEPLOYMENT_GUIDE.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_9_DEPLOYMENT_GUIDE.md) — Step-by-step production deployment for Supabase DB, Edge Functions, Web Portal, and Android
+- [`PHASE_9_TEST_RESULTS.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_9_TEST_RESULTS.md) — Acceptance testing report, automated test suites, and 5-stage integration verification matrix
+- [`PRODUCTION_CONFIGURATION.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PRODUCTION_CONFIGURATION.md) — Production hardening specification, database policies, KMS/Vault signing, and secrets isolation
+- [`RELEASE_GUIDE.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/RELEASE_GUIDE.md) — Android release packaging, keystore security, zipalign & apksigner instructions, and AAB distribution
+- [`BACKUP_AND_RECOVERY.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/BACKUP_AND_RECOVERY.md) — Operational monitoring, PITR database backups, failover playbooks, and cost breakdown
+- [`PILOT_READINESS_CHECKLIST.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PILOT_READINESS_CHECKLIST.md) — Field pilot checklist, hardware qualifications, OEM battery setup, and civilian boundary disclaimers
+- [`KNOWN_LIMITATIONS.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/KNOWN_LIMITATIONS.md) — Engineering constraints, RF propagation physics, Google Play Services dependencies, and store-carry latency
 
 ---
 
@@ -195,4 +203,5 @@ For complete operations portal documentation, consult:
 - **Phase 6 (Complete)**: Web-Based Emergency Operations Portal, Incident Management, Verification Workflow, Team Dispatching, and Real-Time Leaflet Geospatial Map.
 - **Phase 7 (Complete)**: Digitally Signed Public Warnings, Ed25519 Cryptographic Verification, Operations Portal Warning Publishing, Multi-Hop Offline Mesh Distribution, Anti-Rollback Protection, Room v4 Migration, and 113 Passing Android Unit Tests + 26 Passing Web Tests.
 - **Phase 8 (Complete)**: Comprehensive Security Audit, Reliability Engineering, Performance & Stress Testing. Remediated 8 vulnerabilities across Android, Edge Functions, and Web. Created 4 automated test suites (`RoomMigrationTest`, `SecurityNegativeTestSuite`, `ReliabilityStressPerformanceTest`, `NetworkResilienceTest`). Verified 143 passing Android unit tests + 28 passing Web tests. Assembled clean debug APK and production Web build.
+- **Phase 9 (Complete)**: Full System Integration, Production Deployment & Release. Verified end-to-end integration across Android, Supabase Backend, and Web Operations Portal. Compiled R8-minified release APK (`app-release-unsigned.apk`, 7.28 MB) and release Android App Bundle (`app-release.aab`, 7.65 MB). Built production Web assets (`web/dist/`). Verified 143/143 Android tests and 28/28 Web tests. Authored all deployment, release signing, monitoring, disaster recovery, and pilot readiness documentation.
 
