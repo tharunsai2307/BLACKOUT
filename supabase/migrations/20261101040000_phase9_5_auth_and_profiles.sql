@@ -25,9 +25,15 @@ ADD COLUMN IF NOT EXISTS preferred_language TEXT DEFAULT 'en',
 ADD COLUMN IF NOT EXISTS medical_notes TEXT,
 ADD COLUMN IF NOT EXISTS profile_completed BOOLEAN DEFAULT FALSE;
 
--- Ensure default role for new citizen accounts is CITIZEN
-ALTER TABLE public.user_profiles
-ALTER COLUMN role SET DEFAULT 'CITIZEN'::public.app_role_enum;
+-- Ensure default role for new citizen accounts is CITIZEN (safe against 55P04)
+DO $$ BEGIN
+    ALTER TABLE public.user_profiles
+    ALTER COLUMN role SET DEFAULT 'CITIZEN'::public.app_role_enum;
+EXCEPTION
+    WHEN unsafe_new_enum_value_usage OR others THEN
+        -- Role default is already established in phase 6 schema
+        null;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_user_profiles_phone ON public.user_profiles(phone_number);
 

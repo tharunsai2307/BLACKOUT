@@ -9,7 +9,8 @@ DO $$ BEGIN
         'CONTROL_ROOM_OPERATOR',
         'FIELD_RESPONSE_COORDINATOR',
         'PUBLIC_WARNING_PUBLISHER',
-        'VIEWER'
+        'VIEWER',
+        'CITIZEN'
     );
 EXCEPTION
     WHEN duplicate_object THEN null;
@@ -54,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT NOT NULL,
     full_name TEXT NOT NULL,
-    role app_role_enum NOT NULL DEFAULT 'VIEWER',
+    role app_role_enum NOT NULL DEFAULT 'CITIZEN',
     badge_number TEXT,
     organization TEXT NOT NULL DEFAULT 'BLACKOUT Emergency Management Operations',
     is_active BOOLEAN NOT NULL DEFAULT true,
