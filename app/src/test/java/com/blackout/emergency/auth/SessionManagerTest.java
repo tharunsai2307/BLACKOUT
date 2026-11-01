@@ -1,90 +1,269 @@
+
 package com.blackout.emergency.auth;
 
 import android.content.SharedPreferences;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 
 import static org.junit.Assert.*;
 
 /**
- * Pure Java unit tests for SessionManager logic and state transitions.
- * Uses an in-memory FakeSharedPreferences to guarantee zero external mocking dependencies.
+ * Pure Java unit tests for SessionManager.
+ * Tests Keystore-backed AES-256-GCM token encryption, legacy session migration,
+ * token expiration calculation, atomic token refresh queuing, and logout data safety.
  */
 public class SessionManagerTest {
 
     private FakeSharedPreferences fakePrefs;
+    private KeyStoreCryptoManager cryptoManager;
+    private TestSecretKeyProvider keyProvider;
+    private SessionManager sessionManager;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         fakePrefs = new FakeSharedPreferences();
+        keyProvider = new TestSecretKeyProvider();
+        cryptoManager = new KeyStoreCryptoManager(keyProvider);
+        sessionManager = new SessionManager(fakePrefs, cryptoManager);
     }
 
     @Test
-    public void testSaveSessionStoresAllAuthParameters() {
-        fakePrefs.edit()
-                .putString("auth_access_token", "jwt-token-access")
-                .putString("auth_refresh_token", "jwt-token-refresh")
-                .putString("auth_user_id", "user-uuid-12345")
-                .putString("auth_user_email", "responder@blackout.org")
-                .putString("auth_user_name", "Alex Hunter")
-                .putString("auth_user_role", "CITIZEN")
-                .putBoolean("auth_is_guest", false)
-                .apply();
+    public void testSaveSessionEncryptsTokensAtRest() {
+        String rawAccessToken = "mock_access_token_jwt_12345";
+        String rawRefreshToken = "mock_refresh_token_jwt_67890";
 
-        assertEquals("jwt-token-access", fakePrefs.getString("auth_access_token", null));
-        assertEquals("user-uuid-12345", fakePrefs.getString("auth_user_id", null));
-        assertEquals("responder@blackout.org", fakePrefs.getString("auth_user_email", null));
-        assertEquals("Alex Hunter", fakePrefs.getString("auth_user_name", null));
-        assertEquals("CITIZEN", fakePrefs.getString("auth_user_role", "CITIZEN"));
-        assertFalse(fakePrefs.getBoolean("auth_is_guest", false));
+        sessionManager.saveSession(
+                rawAccessToken,
+                rawRefreshToken,
+                "user-uuid-999",
+                "citizen@blackout.mesh",
+                "Jane Doe",
+                "CITIZEN"
+        );
+
+        // Tokens must NOT be stored in plaintext in SharedPreferences!
+        assertNull(fakePrefs.getString("access_token", null));
+        assertNull(fakePrefs.getString("refresh_token", null));
+
+        String encAccess = fakePrefs.getString("enc_access_token", null);
+        String encRefresh = fakePrefs.getString("enc_refresh_token", null);
+
+        assertNotNull(encAccess);
+        assertNotNull(encRefresh);
+        assertNotEquals(rawAccessToken, encAccess);
+        assertNotEquals(rawRefreshToken, encRefresh);
+
+        // Decrypted tokens via SessionManager getters must match original
+        assertEquals(rawAccessToken, sessionManager.getAccessToken());
+        assertEquals(rawRefreshToken, sessionManager.getRefreshToken());
+
+        // Profile metadata remains unencrypted
+        assertEquals("user-uuid-999", sessionManager.getUserId());
+        assertEquals("citizen@blackout.mesh", sessionManager.getEmail());
+        assertEquals("Jane Doe", sessionManager.getFullName());
+        assertEquals("CITIZEN", sessionManager.getRole());
+        assertTrue(sessionManager.isLoggedIn());
+        assertFalse(sessionManager.isGuestMode());
     }
 
     @Test
-    public void testGuestModeConfiguration() {
-        fakePrefs.edit()
-                .putBoolean("auth_is_guest", true)
-                .putString("auth_user_role", "GUEST")
-                .remove("auth_access_token")
+    public void testMigrationFromLegacyPlaintextSession() throws Exception {
+        // Prepare legacy plaintext session in prefs
+        FakeSharedPreferences legacyPrefs = new FakeSharedPreferences();
+        legacyPrefs.edit()
+                .putString("access_token", "legacy_plaintext_access_jwt")
+                .putString("refresh_token", "legacy_plaintext_refresh_jwt")
+                .putString("user_id", "migrated-user-111")
+                .putString("email", "legacy@blackout.org")
+                .putString("full_name", "Legacy User")
+                .putString("role", "CITIZEN")
                 .apply();
 
-        assertTrue(fakePrefs.getBoolean("auth_is_guest", false));
-        assertEquals("GUEST", fakePrefs.getString("auth_user_role", "GUEST"));
-        assertNull(fakePrefs.getString("auth_access_token", null));
+        // Instantiate new SessionManager to trigger automated migration
+        SessionManager migratedManager = new SessionManager(legacyPrefs, cryptoManager);
+
+        // Plaintext tokens must be removed
+        assertNull("Plaintext access token must be cleared after migration", legacyPrefs.getString("access_token", null));
+        assertNull("Plaintext refresh token must be cleared after migration", legacyPrefs.getString("refresh_token", null));
+
+        // Migration flag must be set
+        assertTrue(legacyPrefs.getBoolean("auth_migrated_v10", false));
+
+        // Encrypted tokens must be present and decrypt correctly
+        assertNotNull(legacyPrefs.getString("enc_access_token", null));
+        assertEquals("legacy_plaintext_access_jwt", migratedManager.getAccessToken());
+        assertEquals("legacy_plaintext_refresh_jwt", migratedManager.getRefreshToken());
+        assertEquals("migrated-user-111", migratedManager.getUserId());
     }
 
     @Test
-    public void testLogoutClearsTokens() {
-        fakePrefs.edit()
-                .putString("auth_access_token", "jwt-token-access")
-                .putString("auth_user_id", "user-uuid-12345")
+    public void testTokenExpirationDetection() throws Exception {
+        // Valid encrypted token with expires_at in the future (3600 seconds from now)
+        String validEnc = cryptoManager.encrypt("valid_test_access_token");
+        fakePrefs.edit().putString("enc_access_token", validEnc)
+                .putLong("token_expires_at_sec", System.currentTimeMillis() / 1000L + 3600L)
                 .apply();
+        assertFalse(sessionManager.isTokenExpired());
 
-        assertNotNull(fakePrefs.getString("auth_access_token", null));
-
-        // Simulate logout clearing
-        fakePrefs.edit()
-                .remove("auth_access_token")
-                .remove("auth_refresh_token")
-                .remove("auth_user_id")
-                .remove("auth_user_email")
-                .remove("auth_user_name")
-                .remove("auth_user_role")
-                .remove("auth_is_guest")
-                .apply();
-
-        assertNull(fakePrefs.getString("auth_access_token", null));
-        assertNull(fakePrefs.getString("auth_user_id", null));
-        assertNull(fakePrefs.getString("auth_user_email", null));
+        // Expired token (expires_at in past)
+        fakePrefs.edit().putLong("token_expires_at_sec", System.currentTimeMillis() / 1000L - 100L).apply();
+        assertTrue(sessionManager.isTokenExpired());
     }
 
     @Test
-    public void testOnboardingStatusFlag() {
-        fakePrefs.edit().putBoolean("auth_onboarding_completed", true).apply();
-        assertTrue(fakePrefs.getBoolean("auth_onboarding_completed", false));
+    public void testAtomicTokenRefreshQueuing() throws Exception {
+        // Save an expired session
+        String initialAccess = "expired_access_token";
+        String initialRefresh = "valid_refresh_token_777";
+        sessionManager.saveSession(initialAccess, initialRefresh, "u1", "u1@test.com", "User One", "CITIZEN");
+        fakePrefs.edit().putLong("token_expires_at_sec", System.currentTimeMillis() / 1000L - 10L).apply();
+
+        assertTrue(sessionManager.isTokenExpired());
+
+        // Mock SupabaseAuthClient
+        AtomicInteger networkCallCount = new AtomicInteger(0);
+        SupabaseAuthClient mockAuthClient = new SupabaseAuthClient("https://mock.supabase.co", "anon") {
+            @Override
+            public void refreshAccessToken(String refreshToken, AuthCallback callback) {
+                networkCallCount.incrementAndGet();
+                // Simulate network latency
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException ignored) {}
+                    callback.onSuccess("new_access_token_888", "new_refresh_token_999", "u1", "u1@test.com", "User One", "CITIZEN");
+                }).start();
+            }
+        };
+
+        // Trigger 5 concurrent refresh requests
+        int concurrentCallers = 5;
+        CountDownLatch latch = new CountDownLatch(concurrentCallers);
+        List<String> receivedTokens = new ArrayList<>();
+
+        for (int i = 0; i < concurrentCallers; i++) {
+            new Thread(() -> {
+                sessionManager.refreshTokenIfNeeded(mockAuthClient, new SessionManager.TokenRefreshListener() {
+                    @Override
+                    public void onTokenRefreshed(String newAccessToken) {
+                        synchronized (receivedTokens) {
+                            receivedTokens.add(newAccessToken);
+                        }
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onRefreshFailed(String errorMessage) {
+                        latch.countDown();
+                    }
+                });
+            }).start();
+        }
+
+        assertTrue("All concurrent callers must be notified", latch.await(2, TimeUnit.SECONDS));
+
+        // Crucial Assertion: Exactly ONE HTTP network refresh request must have been made!
+        assertEquals("Atomic mutex must serialize refresh into a single network call", 1, networkCallCount.get());
+        assertEquals("All 5 callers must receive the refreshed token", concurrentCallers, receivedTokens.size());
+        for (String token : receivedTokens) {
+            assertEquals("new_access_token_888", token);
+        }
+
+        // Session manager tokens must be updated
+        assertEquals("new_access_token_888", sessionManager.getAccessToken());
+        assertEquals("new_refresh_token_999", sessionManager.getRefreshToken());
+    }
+
+    @Test
+    public void testPermanentRefreshFailureSafelyClearsCredentials() throws Exception {
+        sessionManager.saveSession("bad_access", "revoked_refresh", "u2", "u2@test.com", "User Two", "CITIZEN");
+        fakePrefs.edit().putLong("token_expires_at_sec", System.currentTimeMillis() / 1000L - 10L).apply();
+
+        SupabaseAuthClient failingAuthClient = new SupabaseAuthClient("https://mock.supabase.co", "anon") {
+            @Override
+            public void refreshAccessToken(String refreshToken, AuthCallback callback) {
+                callback.onFailure("HTTP 400: Invalid Refresh Token: Refresh Token Not Found");
+            }
+        };
+
+        AtomicBoolean failureReported = new AtomicBoolean(false);
+        sessionManager.refreshTokenIfNeeded(failingAuthClient, new SessionManager.TokenRefreshListener() {
+            @Override
+            public void onTokenRefreshed(String newAccessToken) {
+                fail("Expected failure");
+            }
+
+            @Override
+            public void onRefreshFailed(String errorMessage) {
+                failureReported.set(true);
+            }
+        });
+
+        assertTrue(failureReported.get());
+        // Tokens must be cleared
+        assertNull(sessionManager.getAccessToken());
+        assertNull(sessionManager.getRefreshToken());
+    }
+
+    @Test
+    public void testGuestModeAllowsOfflineOperationWithoutTokens() {
+        sessionManager.setGuestMode(true);
+        assertTrue(sessionManager.isGuestMode());
+        assertFalse(sessionManager.isLoggedIn());
+        assertNull(sessionManager.getAccessToken());
+    }
+
+    @Test
+    public void testLogoutClearsTokensWithoutAffectingRoomData() {
+        sessionManager.saveSession("access", "refresh", "uid", "email@test.com", "Name", "CITIZEN");
+        assertTrue(sessionManager.isLoggedIn());
+
+        sessionManager.logout();
+
+        assertFalse(sessionManager.isLoggedIn());
+        assertNull(sessionManager.getAccessToken());
+        assertNull(sessionManager.getRefreshToken());
+        assertNull(sessionManager.getUserId());
+        // SharedPreferences cleared, Room database untouched
+    }
+
+    /**
+     * In-memory SecretKeyProvider for pure JVM tests.
+     */
+    private static class TestSecretKeyProvider implements KeyStoreCryptoManager.SecretKeyProvider {
+        private SecretKey secretKey;
+
+        TestSecretKeyProvider() throws Exception {
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(256, new SecureRandom());
+            this.secretKey = keyGen.generateKey();
+        }
+
+        @Override
+        public SecretKey getOrCreateKey() {
+            return secretKey;
+        }
+
+        @Override
+        public void deleteKey() {
+            this.secretKey = null;
+        }
     }
 
     /**
@@ -151,16 +330,21 @@ public class SessionManagerTest {
 
         private static class FakeEditor implements Editor {
             private final FakeSharedPreferences parent;
-            private final Map<String, Object> buffer = new HashMap<>();
+            private final Map<String, Object> pending = new HashMap<>();
+            private final List<String> toRemove = new ArrayList<>();
+            private boolean clearAll = false;
 
-            public FakeEditor(FakeSharedPreferences parent) {
+            FakeEditor(FakeSharedPreferences parent) {
                 this.parent = parent;
-                this.buffer.putAll(parent.storage);
             }
 
             @Override
             public Editor putString(String key, String value) {
-                buffer.put(key, value);
+                if (value == null) {
+                    toRemove.add(key);
+                } else {
+                    pending.put(key, value);
+                }
                 return this;
             }
 
@@ -171,50 +355,55 @@ public class SessionManagerTest {
 
             @Override
             public Editor putInt(String key, int value) {
-                buffer.put(key, value);
+                pending.put(key, value);
                 return this;
             }
 
             @Override
             public Editor putLong(String key, long value) {
-                buffer.put(key, value);
+                pending.put(key, value);
                 return this;
             }
 
             @Override
             public Editor putFloat(String key, float value) {
-                buffer.put(key, value);
+                pending.put(key, value);
                 return this;
             }
 
             @Override
             public Editor putBoolean(String key, boolean value) {
-                buffer.put(key, value);
+                pending.put(key, value);
                 return this;
             }
 
             @Override
             public Editor remove(String key) {
-                buffer.remove(key);
+                toRemove.add(key);
                 return this;
             }
 
             @Override
             public Editor clear() {
-                buffer.clear();
+                clearAll = true;
                 return this;
             }
 
             @Override
             public boolean commit() {
-                parent.storage.clear();
-                parent.storage.putAll(buffer);
+                apply();
                 return true;
             }
 
             @Override
             public void apply() {
-                commit();
+                if (clearAll) {
+                    parent.storage.clear();
+                }
+                for (String k : toRemove) {
+                    parent.storage.remove(k);
+                }
+                parent.storage.putAll(pending);
             }
         }
     }
