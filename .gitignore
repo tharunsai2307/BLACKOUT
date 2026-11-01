@@ -25,3 +25,7 @@ pnpm-debug.log*
 *.bak
 Thumbs.db
 Desktop.ini
+
+# Local environment secrets
+web/.env
+web/.env.local

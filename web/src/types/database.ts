@@ -96,6 +96,16 @@ export interface EmergencyAlert {
   operator_status: OperatorStatus;
   protocol_version: number;
   payload_hash: string;
+  // Phase 9 Add-on Geoapify Location Enrichment
+  geocoded_address?: string | null;
+  geocoded_locality?: string | null;
+  geocoded_district?: string | null;
+  geocoded_state?: string | null;
+  geocoded_country?: string | null;
+  geocoded_postal_code?: string | null;
+  geocoded_is_approximate?: boolean;
+  geocoded_confidence?: number | null;
+  geocoded_at?: string | null;
   // Phase 6 Extensions
   verification_status: VerificationStatus;
   assigned_team_id?: string | null;

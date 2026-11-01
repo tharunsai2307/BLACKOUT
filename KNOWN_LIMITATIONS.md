@@ -56,3 +56,4 @@ This document outlines the engineering, environmental, and physical constraints 
 1. **Lack of Physical Multi-Device Hardware in CI/CD**:
    - Automated continuous integration and containerized build environments lack physical Bluetooth LE and Wi-Fi Direct hardware controllers.
    - While multi-hop relay logic, cryptographic verification, and serialization are rigorously tested via synthetic unit tests, real-world multi-device physical RF handoffs must be validated during field pilots.
+

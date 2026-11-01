@@ -77,3 +77,4 @@ Before initiating pilot exercises, verify all runtime permissions are granted:
 | 3-Device Offline Mesh Field Exercise | TBD (Day 1) | Field Operations Coordinator | Pending Hardware |
 | Gateway Upload Under Simulated Backhaul | TBD (Day 1) | Network Engineer | Pending Hardware |
 | Formal Pilot Review & Debrief | TBD (Day 3) | Incident Commander | Pending Completion |
+

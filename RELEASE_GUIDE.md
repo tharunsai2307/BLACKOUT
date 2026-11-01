@@ -121,3 +121,4 @@ Verify that:
 - Runtime permissions dialogs appear for Nearby Devices and Location.
 - Room SQLite Database opens successfully at schema version 4.
 - Background WorkManager tasks (`AlertUploadWorker`, `WarningSyncWorker`) schedule without security exceptions.
+

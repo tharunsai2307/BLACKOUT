@@ -110,3 +110,4 @@ To support informed decision-making without unexpected expenditure, costs are de
 
 > [!NOTE]
 > Transitioning from Free to Pro tier requires user approval and credit card configuration in Supabase. The platform is fully operational on the Free tier for testing and pilot field exercises.
+

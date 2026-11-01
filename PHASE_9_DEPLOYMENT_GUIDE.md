@@ -146,3 +146,4 @@ In the Supabase Dashboard under **Authentication $\to$ URL Configuration**:
 
 ### 5.3 Keystore Signing Instructions
 Follow [`RELEASE_GUIDE.md`](file:///c:/Users/Hp/Music/My%20Projects/Java%20Capstone/RELEASE_GUIDE.md) to sign the release APK with your organization's protected release keystore using `apksigner`.
+
