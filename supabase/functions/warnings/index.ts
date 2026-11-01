@@ -1,12 +1,12 @@
 // BLACKOUT Decentralized Emergency Communications Platform
 // Supabase Edge Function: /warnings
-// Implements Phase 7 Digitally Signed Public Emergency Warnings Backend API
+// Implements Phase 7 & Phase 8 Digitally Signed Public Emergency Warnings Backend API
 // Endpoints:
-// - POST /warnings/:warningId/sign
-// - GET  /warnings/active
+// - POST /warnings/:warningId/sign (Protected: SUPER_ADMIN, PUBLIC_WARNING_PUBLISHER)
+// - GET  /warnings/active (Public / Gateway distributed)
 // - GET  /warnings/:warningId
-// - GET  /warning-keys
-// - POST /warnings/:warningId/revoke
+// - GET  /warning-keys (Public Key Registry)
+// - POST /warnings/:warningId/revoke (Protected: SUPER_ADMIN, PUBLIC_WARNING_PUBLISHER, CONTROL_ROOM_OPERATOR)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -125,6 +125,88 @@ async function signEd25519(canonicalStr: string, rawPrivKeyBase64: string): Prom
   return bytesToBase64(new Uint8Array(signatureBuffer));
 }
 
+interface AuthResult {
+  user: any;
+  profile: any;
+  error?: string;
+  status?: number;
+}
+
+// Validates caller authentication and checks required role permissions (Phase 8 Security Audit Hardening)
+async function authenticateCaller(
+  req: Request,
+  supabaseAdmin: any,
+  allowedRoles: string[]
+): Promise<AuthResult> {
+  const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return {
+      user: null,
+      profile: null,
+      error: "UNAUTHORIZED: Missing or malformed Authorization header with Bearer token",
+      status: 401,
+    };
+  }
+
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  // Allow service-role backend calls (trusted internal server-to-server operations)
+  if (serviceKey && token === serviceKey) {
+    return {
+      user: { id: "system-signing-service", email: "signing-service@blackout.system" },
+      profile: { id: "system-signing-service", role: "SUPER_ADMIN", email: "signing-service@blackout.system" },
+    };
+  }
+
+  // Validate user JWT with Supabase Auth
+  const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+  if (authErr || !user) {
+    return {
+      user: null,
+      profile: null,
+      error: `UNAUTHORIZED: ${authErr?.message || "Invalid or expired session token"}`,
+      status: 401,
+    };
+  }
+
+  // Fetch caller's verified role and status from user_profiles table
+  const { data: profile, error: profileErr } = await supabaseAdmin
+    .from("user_profiles")
+    .select("id, email, full_name, role, is_active")
+    .eq("id", user.id)
+    .single();
+
+  if (profileErr || !profile) {
+    return {
+      user,
+      profile: null,
+      error: "FORBIDDEN: User profile not registered in BLACKOUT emergency personnel directory",
+      status: 403,
+    };
+  }
+
+  if (!profile.is_active) {
+    return {
+      user,
+      profile,
+      error: "FORBIDDEN: User account is inactive or decommissioned",
+      status: 403,
+    };
+  }
+
+  if (!allowedRoles.includes(profile.role)) {
+    return {
+      user,
+      profile,
+      error: `FORBIDDEN: Insufficient privileges. Required one of: [${allowedRoles.join(", ")}], caller has: ${profile.role}`,
+      status: 403,
+    };
+  }
+
+  return { user, profile };
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -187,180 +269,243 @@ serve(async (req: Request) => {
     // -------------------------------------------------------------------------
     // 3. POST /warnings/:warningId/sign: Authorize, validate, and sign warning
     // -------------------------------------------------------------------------
-    if (req.method === "POST" && path.includes("/sign")) {
-      const parts = path.split("/");
-      const signIndex = parts.indexOf("sign");
-      const warningId = parts[signIndex - 1];
-
-      if (!warningId) {
-        return new Response(JSON.stringify({ error: "Missing warningId in URL" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (req.method === "POST" && (path.includes("/sign") || (path.endsWith("/warnings") && !path.includes("/revoke")))) {
+      let warningId = "";
+      if (path.includes("/sign")) {
+        const parts = path.split("/");
+        const signIndex = parts.indexOf("sign");
+        if (signIndex > 0) {
+          warningId = parts[signIndex - 1];
+        }
       }
 
-      // Fetch the warning from database
-      const { data: warning, error: fetchErr } = await supabase
-        .from("public_warnings")
-        .select("*")
-        .eq("id", warningId)
-        .single();
-
-      if (fetchErr || !warning) {
-        return new Response(JSON.stringify({ error: "Warning not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      let body: any = {};
+      try {
+        body = await req.json();
+      } catch {
+        body = {};
       }
 
-      // Check lifecycle status: must be APPROVED or SUBMITTED_FOR_APPROVAL
-      if (warning.status !== "APPROVED" && warning.status !== "SUBMITTED_FOR_APPROVAL") {
-        return new Response(
-          JSON.stringify({
-            error: "INVALID_STATUS",
-            message: `Warning must be approved before digital signing. Current status: ${warning.status}`,
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (body.action === "revoke" || path.includes("/revoke")) {
+        // Fall through to revoke handler if action is explicitly revoke
+      } else {
+        if (!warningId && body.warningId) {
+          warningId = body.warningId;
+        }
 
-      // Parse regions
-      let regions: string[] = [];
-      if (Array.isArray(warning.affected_regions)) {
-        regions = warning.affected_regions;
-      } else if (typeof warning.affected_area === "string") {
-        regions = [warning.affected_area];
-      }
+        if (!warningId) {
+          return new Response(JSON.stringify({ error: "Missing warningId in URL or request body" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
-      const issuedAtMillis = new Date(warning.published_at || new Date()).getTime();
-      const effectiveAtMillis = new Date(warning.effective_at || warning.published_at || new Date()).getTime();
-      const expiresAtMillis = new Date(warning.expires_at).getTime();
+        // Enforce RBAC Authentication: Only SUPER_ADMIN and PUBLIC_WARNING_PUBLISHER can sign warnings
+        const auth = await authenticateCaller(req, supabase, [
+          "SUPER_ADMIN",
+          "PUBLIC_WARNING_PUBLISHER",
+        ]);
 
-      if (expiresAtMillis <= issuedAtMillis) {
-        return new Response(
-          JSON.stringify({ error: "INVALID_TIMESTAMPS", message: "expires_at must be in the future of issued_at" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+        if (auth.error) {
+          return new Response(JSON.stringify({ error: auth.error }), {
+            status: auth.status || 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
-      const revisionNumber = (warning.revision || 0) + 1;
-      const statusPublished = "PUBLISHED";
-      const keyId = ROOT_KEY_ID;
+        // Fetch the warning from database
+        const { data: warning, error: fetchErr } = await supabase
+          .from("public_warnings")
+          .select("*")
+          .eq("id", warningId)
+          .single();
 
-      // Construct canonical representation
-      const canonicalString = buildCanonicalString({
-        warningId: warning.id,
-        protocolVersion: 1,
-        revision: revisionNumber,
-        status: statusPublished,
-        category: warning.category,
-        severity: warning.severity,
-        issuingAuthority: warning.issuing_authority,
-        title: warning.title,
-        description: warning.description,
-        issuedAt: issuedAtMillis,
-        effectiveAt: effectiveAtMillis,
-        expiresAt: expiresAtMillis,
-        language: warning.language || "en",
-        signingKeyId: keyId,
-        signatureAlgorithm: "Ed25519",
-        latitude: warning.latitude,
-        longitude: warning.longitude,
-        radiusMeters: warning.radius_meters || (warning.radius_km ? warning.radius_km * 1000 : null),
-        affectedRegions: regions,
-      });
+        if (fetchErr || !warning) {
+          return new Response(JSON.stringify({ error: "Warning not found" }), {
+            status: 404,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
 
-      // Digitally sign canonical bytes
-      const signatureBase64 = await signEd25519(canonicalString, privateSigningKey);
+        // Check lifecycle status: must be APPROVED or SUBMITTED_FOR_APPROVAL
+        if (warning.status !== "APPROVED" && warning.status !== "SUBMITTED_FOR_APPROVAL") {
+          return new Response(
+            JSON.stringify({
+              error: "INVALID_STATUS",
+              message: `Warning must be approved before digital signing. Current status: ${warning.status}`,
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
 
-      const publishedIso = new Date(issuedAtMillis).toISOString();
+        // Parse regions
+        let regions: string[] = [];
+        if (Array.isArray(warning.affected_regions)) {
+          regions = warning.affected_regions;
+        } else if (typeof warning.affected_area === "string") {
+          regions = [warning.affected_area];
+        }
 
-      // Update public_warnings table
-      const { data: updatedWarning, error: updateErr } = await supabase
-        .from("public_warnings")
-        .update({
-          status: statusPublished,
+        const issuedAtMillis = new Date(warning.published_at || new Date()).getTime();
+        const effectiveAtMillis = new Date(warning.effective_at || warning.published_at || new Date()).getTime();
+        const expiresAtMillis = new Date(warning.expires_at).getTime();
+
+        if (expiresAtMillis <= issuedAtMillis) {
+          return new Response(
+            JSON.stringify({ error: "INVALID_TIMESTAMPS", message: "expires_at must be in the future of issued_at" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const revisionNumber = (warning.revision || 0) + 1;
+        const statusPublished = "PUBLISHED";
+        const keyId = ROOT_KEY_ID;
+
+        // Construct canonical representation
+        const canonicalString = buildCanonicalString({
+          warningId: warning.id,
+          protocolVersion: 1,
           revision: revisionNumber,
+          status: statusPublished,
+          category: warning.category,
+          severity: warning.severity,
+          issuingAuthority: warning.issuing_authority,
+          title: warning.title,
+          description: warning.description,
+          issuedAt: issuedAtMillis,
+          effectiveAt: effectiveAtMillis,
+          expiresAt: expiresAtMillis,
+          language: warning.language || "en",
+          signingKeyId: keyId,
+          signatureAlgorithm: "Ed25519",
+          latitude: warning.latitude,
+          longitude: warning.longitude,
+          radiusMeters: warning.radius_meters || (warning.radius_km ? warning.radius_km * 1000 : null),
+          affectedRegions: regions,
+        });
+
+        // Digitally sign canonical bytes
+        const signatureBase64 = await signEd25519(canonicalString, privateSigningKey);
+
+        const publishedIso = new Date(issuedAtMillis).toISOString();
+
+        // Update public_warnings table
+        const { data: updatedWarning, error: updateErr } = await supabase
+          .from("public_warnings")
+          .update({
+            status: statusPublished,
+            revision: revisionNumber,
+            signing_key_id: keyId,
+            signature_algorithm: "Ed25519",
+            signature: signatureBase64,
+            canonical_payload: canonicalString,
+            published_at: publishedIso,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", warningId)
+          .select("*")
+          .single();
+
+        if (updateErr) {
+          return new Response(JSON.stringify({ error: updateErr.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Record in warning_revisions table
+        await supabase.from("warning_revisions").insert({
+          warning_id: warningId,
+          warning_code: warning.warning_code,
+          revision: revisionNumber,
+          title: warning.title,
+          description: warning.description,
+          category: warning.category,
+          severity: warning.severity,
+          status: statusPublished,
+          issuing_authority: warning.issuing_authority,
           signing_key_id: keyId,
           signature_algorithm: "Ed25519",
           signature: signatureBase64,
           canonical_payload: canonicalString,
-          published_at: publishedIso,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", warningId)
-        .select("*")
-        .single();
-
-      if (updateErr) {
-        return new Response(JSON.stringify({ error: updateErr.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          affected_regions: regions,
+          latitude: warning.latitude,
+          longitude: warning.longitude,
+          radius_meters: warning.radius_meters || (warning.radius_km ? warning.radius_km * 1000 : null),
+          language: warning.language || "en",
+          issued_at: publishedIso,
+          effective_at: new Date(effectiveAtMillis).toISOString(),
+          expires_at: new Date(expiresAtMillis).toISOString(),
         });
+
+        // Audit Log with authentic verified operator identity
+        await supabase.from("audit_logs").insert({
+          actor_email: auth.profile?.email || auth.user?.email || "signing-service@blackout.system",
+          actor_role: auth.profile?.role || "PUBLIC_WARNING_PUBLISHER",
+          action: "SIGN_AND_PUBLISH_WARNING",
+          resource_type: "PUBLIC_WARNING",
+          resource_id: warningId,
+          details: {
+            keyId,
+            revision: revisionNumber,
+            signatureAlgorithm: "Ed25519",
+            signature: signatureBase64,
+            actor_id: auth.user?.id,
+          },
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            warning: updatedWarning,
+            signature: signatureBase64,
+            signingKeyId: keyId,
+            canonicalPayload: canonicalString,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-
-      // Record in warning_revisions table
-      await supabase.from("warning_revisions").insert({
-        warning_id: warningId,
-        warning_code: warning.warning_code,
-        revision: revisionNumber,
-        title: warning.title,
-        description: warning.description,
-        category: warning.category,
-        severity: warning.severity,
-        status: statusPublished,
-        issuing_authority: warning.issuing_authority,
-        signing_key_id: keyId,
-        signature_algorithm: "Ed25519",
-        signature: signatureBase64,
-        canonical_payload: canonicalString,
-        affected_regions: regions,
-        latitude: warning.latitude,
-        longitude: warning.longitude,
-        radius_meters: warning.radius_meters || (warning.radius_km ? warning.radius_km * 1000 : null),
-        language: warning.language || "en",
-        issued_at: publishedIso,
-        effective_at: new Date(effectiveAtMillis).toISOString(),
-        expires_at: new Date(expiresAtMillis).toISOString(),
-      });
-
-      // Audit Log
-      await supabase.from("audit_logs").insert({
-        actor_email: "signing-service@blackout.system",
-        actor_role: "DIGITAL_SIGNING_SERVICE",
-        action: "SIGN_AND_PUBLISH_WARNING",
-        resource_type: "PUBLIC_WARNING",
-        resource_id: warningId,
-        details: {
-          keyId,
-          revision: revisionNumber,
-          signatureAlgorithm: "Ed25519",
-          signature: signatureBase64,
-        },
-      });
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          warning: updatedWarning,
-          signature: signatureBase64,
-          signingKeyId: keyId,
-          canonicalPayload: canonicalString,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     // -------------------------------------------------------------------------
     // 4. POST /warnings/:warningId/revoke: Revoke warning
     // -------------------------------------------------------------------------
-    if (req.method === "POST" && path.includes("/revoke")) {
-      const parts = path.split("/");
-      const revokeIndex = parts.indexOf("revoke");
-      const warningId = parts[revokeIndex - 1];
+    if (req.method === "POST" && (path.includes("/revoke") || path.endsWith("/revoke"))) {
+      let warningId = "";
+      if (path.includes("/revoke")) {
+        const parts = path.split("/");
+        const revokeIndex = parts.indexOf("revoke");
+        if (revokeIndex > 0) {
+          warningId = parts[revokeIndex - 1];
+        }
+      }
 
       const body = await req.json().catch(() => ({}));
+      if (!warningId && body.warningId) {
+        warningId = body.warningId;
+      }
       const reason = body.reason || "Administrative cancellation";
+
+      if (!warningId) {
+        return new Response(JSON.stringify({ error: "Missing warningId in URL or request body" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Enforce RBAC Authentication: SUPER_ADMIN, PUBLIC_WARNING_PUBLISHER, or CONTROL_ROOM_OPERATOR can revoke
+      const auth = await authenticateCaller(req, supabase, [
+        "SUPER_ADMIN",
+        "PUBLIC_WARNING_PUBLISHER",
+        "CONTROL_ROOM_OPERATOR",
+      ]);
+
+      if (auth.error) {
+        return new Response(JSON.stringify({ error: auth.error }), {
+          status: auth.status || 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       const { data: warning, error: fetchErr } = await supabase
         .from("public_warnings")
@@ -377,7 +522,6 @@ serve(async (req: Request) => {
 
       const revNumber = (warning.revision || 1) + 1;
       const revokedAtIso = new Date().toISOString();
-      const revokedAtMillis = Date.now();
 
       // Canonical payload for revocation revision
       const canonicalRevocation = buildCanonicalString({
@@ -437,14 +581,19 @@ serve(async (req: Request) => {
         revoked_at: revokedAtIso,
       });
 
-      // Audit Log
+      // Audit Log with verified operator identity
       await supabase.from("audit_logs").insert({
-        actor_email: "signing-service@blackout.system",
-        actor_role: "DIGITAL_SIGNING_SERVICE",
+        actor_email: auth.profile?.email || auth.user?.email || "signing-service@blackout.system",
+        actor_role: auth.profile?.role || "CONTROL_ROOM_OPERATOR",
         action: "REVOKE_WARNING",
         resource_type: "PUBLIC_WARNING",
         resource_id: warningId,
-        details: { reason, revision: revNumber, revocationSignature },
+        details: {
+          reason,
+          revision: revNumber,
+          revocationSignature,
+          actor_id: auth.user?.id,
+        },
       });
 
       return new Response(
@@ -498,4 +647,3 @@ serve(async (req: Request) => {
     });
   }
 });
-

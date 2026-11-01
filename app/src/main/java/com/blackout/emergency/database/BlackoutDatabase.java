@@ -48,6 +48,66 @@ public abstract class BlackoutDatabase extends RoomDatabase {
     public abstract WarningRevocationDao warningRevocationDao();
 
     /**
+     * Migration from Version 1 to Version 2:
+     * Adds Phase 4 multi-hop store-carry-and-forward relay queue and delivery history.
+     * Preserves all existing SOS alerts in emergency_messages.
+     */
+    public static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS relay_queue ("
+                    + "messageId TEXT NOT NULL PRIMARY KEY, "
+                    + "relayStatus TEXT, "
+                    + "queuedAt INTEGER NOT NULL, "
+                    + "nextAttemptAt INTEGER NOT NULL, "
+                    + "attemptCount INTEGER NOT NULL, "
+                    + "lastAttemptAt INTEGER NOT NULL, "
+                    + "lastError TEXT, "
+                    + "priority TEXT)");
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_relay_queue_relayStatus ON relay_queue (relayStatus)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_relay_queue_nextAttemptAt ON relay_queue (nextAttemptAt)");
+
+            db.execSQL("CREATE TABLE IF NOT EXISTS relay_history ("
+                    + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "messageId TEXT NOT NULL, "
+                    + "fromDeviceId TEXT, "
+                    + "toDeviceId TEXT, "
+                    + "hopNumber INTEGER NOT NULL, "
+                    + "transferStatus TEXT, "
+                    + "timestamp INTEGER NOT NULL)");
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_relay_history_messageId ON relay_history (messageId)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_relay_history_toDeviceId ON relay_history (toDeviceId)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_relay_history_messageId_toDeviceId ON relay_history (messageId, toDeviceId)");
+        }
+    };
+
+    /**
+     * Migration from Version 2 to Version 3:
+     * Adds Phase 5 internet gateway upload queue.
+     * Preserves all existing SOS alerts, relay queue, and relay history records.
+     */
+    public static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS pending_uploads ("
+                    + "messageId TEXT NOT NULL PRIMARY KEY, "
+                    + "uploadStatus TEXT, "
+                    + "gatewayDeviceId TEXT, "
+                    + "attemptCount INTEGER NOT NULL, "
+                    + "nextAttemptAt INTEGER NOT NULL, "
+                    + "lastAttemptAt INTEGER NOT NULL, "
+                    + "uploadedAt INTEGER NOT NULL, "
+                    + "backendReference TEXT, "
+                    + "lastErrorCode TEXT)");
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_uploads_uploadStatus ON pending_uploads (uploadStatus)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_pending_uploads_nextAttemptAt ON pending_uploads (nextAttemptAt)");
+        }
+    };
+
+    /**
      * Migration from Version 3 to Version 4:
      * Adds Phase 7 public warnings and digital signature infrastructure.
      * Preserves all existing SOS alerts, relay queue, and upload records.
@@ -171,8 +231,7 @@ public abstract class BlackoutDatabase extends RoomDatabase {
                     BlackoutDatabase.class,
                     DATABASE_NAME
             )
-            .addMigrations(MIGRATION_3_4)
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build();
         }
         return instance;

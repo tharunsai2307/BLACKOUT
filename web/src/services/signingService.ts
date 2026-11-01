@@ -211,6 +211,13 @@ export const signingService = {
     actor: { id?: string; email: string; role: string }
   ): Promise<{ data: any; error: string | null }> {
     try {
+      // Phase 8 RBAC Authorization Enforcement
+      if (actor.role !== 'SUPER_ADMIN' && actor.role !== 'PUBLIC_WARNING_PUBLISHER') {
+        return {
+          data: null,
+          error: 'FORBIDDEN: Only SUPER_ADMIN and PUBLIC_WARNING_PUBLISHER can digitally sign warnings.',
+        };
+      }
       // 1. Try invoking Supabase Edge Function
       const { data: edgeData, error: edgeErr } = await supabase.functions.invoke(`warnings`, {
         body: { warningId },
@@ -371,6 +378,17 @@ export const signingService = {
     actor: { id?: string; email: string; role: string }
   ): Promise<{ data: any; error: string | null }> {
     try {
+      // Phase 8 RBAC Authorization Enforcement
+      if (
+        actor.role !== 'SUPER_ADMIN' &&
+        actor.role !== 'PUBLIC_WARNING_PUBLISHER' &&
+        actor.role !== 'CONTROL_ROOM_OPERATOR'
+      ) {
+        return {
+          data: null,
+          error: 'FORBIDDEN: Insufficient privileges to revoke warnings.',
+        };
+      }
       const { data: warning, error: fetchErr } = await supabase
         .from('public_warnings')
         .select('*')

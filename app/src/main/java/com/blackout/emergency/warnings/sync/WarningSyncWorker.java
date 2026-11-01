@@ -2,6 +2,7 @@ package com.blackout.emergency.warnings.sync;
 
 import android.content.Context;
 import androidx.annotation.NonNull;
+import androidx.work.BackoffPolicy;
 import androidx.work.Constraints;
 import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
@@ -97,6 +98,7 @@ public class WarningSyncWorker extends Worker {
 
         OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(WarningSyncWorker.class)
                 .setConstraints(constraints)
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
                 .build();
 
         WorkManager.getInstance(context).enqueue(request);
@@ -115,6 +117,7 @@ public class WarningSyncWorker extends Worker {
                 15, TimeUnit.MINUTES
         )
         .setConstraints(constraints)
+        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
         .build();
 
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(

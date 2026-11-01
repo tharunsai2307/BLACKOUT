@@ -84,5 +84,29 @@ describe('Phase 7 Cryptographic Signing & Canonical Serialization Service', () =
     const valid = await verifySignatureInBrowser(ROOT_PUBLIC_KEY_BASE64, canonical, 'INVALID_BASE64_SIG');
     expect(valid).toBe(false);
   });
+
+  it('rejects unauthorized roles from signing warnings (Phase 8 RBAC enforcement)', async () => {
+    const { signingService } = await import('../services/signingService');
+    const unauthorizedActor = {
+      id: 'usr-viewer-1',
+      email: 'viewer@blackout.test',
+      role: 'VIEWER',
+    };
+    const res = await signingService.signAndPublishWarning('any-id', unauthorizedActor);
+    expect(res.error).toContain('FORBIDDEN');
+    expect(res.data).toBeNull();
+  });
+
+  it('rejects unauthorized roles from revoking warnings (Phase 8 RBAC enforcement)', async () => {
+    const { signingService } = await import('../services/signingService');
+    const unauthorizedActor = {
+      id: 'usr-coord-1',
+      email: 'coordinator@blackout.test',
+      role: 'FIELD_RESPONSE_COORDINATOR',
+    };
+    const res = await signingService.revokeWarning('any-id', 'test cancellation', unauthorizedActor);
+    expect(res.error).toContain('FORBIDDEN');
+    expect(res.data).toBeNull();
+  });
 });
 

@@ -50,7 +50,7 @@ public class ReceivedMessageHandler {
 
     public ReceivedMessageHandler(EmergencyRepository repository, ExecutorService executor) {
         this.repository = repository;
-        this.executor = executor;
+        this.executor = executor != null ? executor : Executors.newSingleThreadExecutor();
         this.mainHandler = createSafeMainHandler();
     }
 

@@ -175,6 +175,13 @@ For complete operations portal documentation, consult:
 - [`OFFLINE_WARNING_DISTRIBUTION.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/OFFLINE_WARNING_DISTRIBUTION.md) — Store-carry-and-forward mesh mechanics and zero-trust distribution
 - [`WARNING_API.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/WARNING_API.md) — Backend Edge Functions, signing endpoints, and RBAC authorization
 - [`SECURITY_MODEL.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/SECURITY_MODEL.md) — Threat model, anti-tampering guarantees, and rollback protection
+- [`PHASE_8_IMPLEMENTATION.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_IMPLEMENTATION.md) — Security Audit, Reliability Engineering, Performance & Stress Testing Overview
+- [`PHASE_8_SECURITY_AUDIT.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_SECURITY_AUDIT.md) — Findings register, threat analysis, cryptographic negative tests, and attack surface hardening
+- [`PHASE_8_RELIABILITY_TESTING.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_RELIABILITY_TESTING.md) — Offline operation, multi-hop mesh, partition healing, and Room sequential migrations
+- [`PHASE_8_PERFORMANCE_REPORT.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_PERFORMANCE_REPORT.md) — Latency benchmarks, Ed25519 throughput, volume scaling (100/1000/5000 records), and batch relay queuing
+- [`PHASE_8_TEST_RESULTS.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_TEST_RESULTS.md) — Test execution breakdown: 143 Android unit tests + 28 Web tests passing
+- [`PHASE_8_KNOWN_LIMITATIONS.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/PHASE_8_KNOWN_LIMITATIONS.md) — Documentation of physical multi-device boundaries, simulated mesh, and secrets provisioning
+- [`SECURITY_REMEDIATION_LOG.md`](file:///C:/Users/Hp/Music/My%20Projects/Java%20Capstone/SECURITY_REMEDIATION_LOG.md) — Detailed changelog of vulnerabilities and reliability bugs remediated
 
 ---
 
@@ -187,4 +194,5 @@ For complete operations portal documentation, consult:
 - **Phase 5 (Complete)**: Central Cloud Backend, Supabase PostgreSQL Database, Edge Functions Ingestion API, Mobile Internet Gateway, Automatic Network Synchronization, and 77 Automated Unit Tests.
 - **Phase 6 (Complete)**: Web-Based Emergency Operations Portal, Incident Management, Verification Workflow, Team Dispatching, and Real-Time Leaflet Geospatial Map.
 - **Phase 7 (Complete)**: Digitally Signed Public Warnings, Ed25519 Cryptographic Verification, Operations Portal Warning Publishing, Multi-Hop Offline Mesh Distribution, Anti-Rollback Protection, Room v4 Migration, and 113 Passing Android Unit Tests + 26 Passing Web Tests.
+- **Phase 8 (Complete)**: Comprehensive Security Audit, Reliability Engineering, Performance & Stress Testing. Remediated 8 vulnerabilities across Android, Edge Functions, and Web. Created 4 automated test suites (`RoomMigrationTest`, `SecurityNegativeTestSuite`, `ReliabilityStressPerformanceTest`, `NetworkResilienceTest`). Verified 143 passing Android unit tests + 28 passing Web tests. Assembled clean debug APK and production Web build.
 

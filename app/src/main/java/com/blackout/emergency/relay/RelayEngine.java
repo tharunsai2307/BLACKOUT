@@ -37,6 +37,7 @@ public class RelayEngine {
     private final NearbyConnectionManager connectionManager;
     private final RelayQueueManager queueManager;
     private final EmergencyRepository repository;
+    private final ReceivedMessageHandler messageHandler;
     private final Handler mainHandler;
 
     // Track active peer inventories and in-flight message transfers
@@ -67,6 +68,7 @@ public class RelayEngine {
         this.connectionManager = NearbyConnectionManager.getInstance(this.context);
         this.queueManager = RelayQueueManager.getInstance(this.context);
         this.repository = EmergencyRepository.getInstance(this.context);
+        this.messageHandler = new ReceivedMessageHandler(this.context);
         this.mainHandler = createSafeMainHandler();
     }
 
@@ -282,8 +284,8 @@ public class RelayEngine {
     // =========================================================================
 
     private void handleIncomingSos(@NonNull final String endpointId, @NonNull final byte[] bytes) {
-        ReceivedMessageHandler handler = new ReceivedMessageHandler(repository, null);
-        handler.processIncomingPayload(bytes, (outcome, message, errorMessage) -> {
+
+        messageHandler.processIncomingPayload(bytes, (outcome, message, errorMessage) -> {
             if (outcome == ReceivedMessageHandler.ProcessingOutcome.SUCCESS && message != null) {
                 postStatus("Persisted incoming SOS [" + message.getMessageId().substring(0, 8) + "] (Hop: " + message.getHopCount() + "). Sending ACK...");
                 sendDeliveryAck(endpointId, message.getMessageId(), message.getHopCount());

@@ -38,21 +38,31 @@ import java.util.UUID;
 
 /**
  * Core manager for Google's Nearby Connections API (P2P_CLUSTER strategy).
- * Handles advertising, discovery, connection negotiation with explicit user approval,
+ * Handles advertising, discovery, connection negotiation with explicit user
+ * approval,
  * disconnection management, and raw byte payload transfers.
  */
 public class NearbyConnectionManager {
 
     public interface NearbyEventListener {
         void onAdvertisingStateChanged(boolean isAdvertising);
+
         void onDiscoveryStateChanged(boolean isDiscovering);
+
         void onEndpointDiscovered(@NonNull NearbyDevice device);
+
         void onEndpointLost(@NonNull String endpointId);
+
         void onConnectionInitiated(@NonNull NearbyDevice device, @NonNull String authDigits);
+
         void onConnectionResult(@NonNull String endpointId, boolean isConnected, @NonNull String message);
+
         void onDisconnected(@NonNull String endpointId);
+
         void onPayloadReceived(@NonNull String endpointId, @NonNull byte[] payloadBytes);
+
         void onPayloadTransferUpdate(@NonNull String endpointId, long payloadId, int status);
+
         void onError(@NonNull String errorMessage);
     }
 
@@ -161,21 +171,20 @@ public class NearbyConnectionManager {
                 localCallsign,
                 Constants.NEARBY_SERVICE_ID,
                 connectionLifecycleCallback,
-                options
-        ).addOnSuccessListener(unused -> {
-            isAdvertising = true;
-            if (listener != null) {
-                mainHandler.post(() -> listener.onAdvertisingStateChanged(true));
-            }
-        }).addOnFailureListener(e -> {
-            isAdvertising = false;
-            if (listener != null) {
-                mainHandler.post(() -> {
-                    listener.onAdvertisingStateChanged(false);
-                    listener.onError("Advertising failed: " + e.getMessage());
+                options).addOnSuccessListener(unused -> {
+                    isAdvertising = true;
+                    if (listener != null) {
+                        mainHandler.post(() -> listener.onAdvertisingStateChanged(true));
+                    }
+                }).addOnFailureListener(e -> {
+                    isAdvertising = false;
+                    if (listener != null) {
+                        mainHandler.post(() -> {
+                            listener.onAdvertisingStateChanged(false);
+                            listener.onError("Advertising failed: " + e.getMessage());
+                        });
+                    }
                 });
-            }
-        });
     }
 
     public void stopAdvertising() {
@@ -184,7 +193,8 @@ public class NearbyConnectionManager {
         }
         try {
             connectionsClient.stopAdvertising();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         isAdvertising = false;
         if (listener != null) {
             mainHandler.post(() -> listener.onAdvertisingStateChanged(false));
@@ -207,22 +217,21 @@ public class NearbyConnectionManager {
         connectionsClient.startDiscovery(
                 Constants.NEARBY_SERVICE_ID,
                 endpointDiscoveryCallback,
-                options
-        ).addOnSuccessListener(unused -> {
-            isDiscovering = true;
-            discoveredEndpoints.clear();
-            if (listener != null) {
-                mainHandler.post(() -> listener.onDiscoveryStateChanged(true));
-            }
-        }).addOnFailureListener(e -> {
-            isDiscovering = false;
-            if (listener != null) {
-                mainHandler.post(() -> {
-                    listener.onDiscoveryStateChanged(false);
-                    listener.onError("Discovery failed: " + e.getMessage());
+                options).addOnSuccessListener(unused -> {
+                    isDiscovering = true;
+                    discoveredEndpoints.clear();
+                    if (listener != null) {
+                        mainHandler.post(() -> listener.onDiscoveryStateChanged(true));
+                    }
+                }).addOnFailureListener(e -> {
+                    isDiscovering = false;
+                    if (listener != null) {
+                        mainHandler.post(() -> {
+                            listener.onDiscoveryStateChanged(false);
+                            listener.onError("Discovery failed: " + e.getMessage());
+                        });
+                    }
                 });
-            }
-        });
     }
 
     public void stopDiscovery() {
@@ -231,7 +240,8 @@ public class NearbyConnectionManager {
         }
         try {
             connectionsClient.stopDiscovery();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         isDiscovering = false;
         if (listener != null) {
             mainHandler.post(() -> listener.onDiscoveryStateChanged(false));
@@ -249,16 +259,16 @@ public class NearbyConnectionManager {
         connectionsClient.requestConnection(
                 localCallsign,
                 endpointId,
-                connectionLifecycleCallback
-        ).addOnSuccessListener(unused -> {
-            if (device != null) {
-                device.setState(NearbyDevice.ConnectionState.CONNECTING);
-            }
-        }).addOnFailureListener(e -> {
-            if (listener != null) {
-                mainHandler.post(() -> listener.onError("Connection request failed to " + name + ": " + e.getMessage()));
-            }
-        });
+                connectionLifecycleCallback).addOnSuccessListener(unused -> {
+                    if (device != null) {
+                        device.setState(NearbyDevice.ConnectionState.CONNECTING);
+                    }
+                }).addOnFailureListener(e -> {
+                    if (listener != null) {
+                        mainHandler.post(
+                                () -> listener.onError("Connection request failed to " + name + ": " + e.getMessage()));
+                    }
+                });
     }
 
     public void acceptConnection(@NonNull final String endpointId) {
@@ -286,7 +296,8 @@ public class NearbyConnectionManager {
     public void disconnectFromEndpoint(@NonNull final String endpointId) {
         try {
             connectionsClient.disconnectFromEndpoint(endpointId);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         connectedEndpoints.remove(endpointId);
         NearbyDevice dev = discoveredEndpoints.get(endpointId);
         if (dev != null) {
@@ -302,7 +313,8 @@ public class NearbyConnectionManager {
         stopDiscovery();
         try {
             connectionsClient.stopAllEndpoints();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         discoveredEndpoints.clear();
         connectedEndpoints.clear();
     }
@@ -312,8 +324,8 @@ public class NearbyConnectionManager {
     // =========================================================================
 
     public void sendRawPayload(@NonNull final String endpointId,
-                               @NonNull final byte[] bytes,
-                               @Nullable final NearbyPayloadCallback callback) {
+            @NonNull final byte[] bytes,
+            @Nullable final NearbyPayloadCallback callback) {
         try {
             Payload payload = Payload.fromBytes(bytes);
             connectionsClient.sendPayload(endpointId, payload)
@@ -335,8 +347,8 @@ public class NearbyConnectionManager {
     }
 
     public void sendEmergencySos(@NonNull final String endpointId,
-                                 @NonNull final EmergencyMessage message,
-                                 @Nullable final NearbyPayloadCallback callback) {
+            @NonNull final EmergencyMessage message,
+            @Nullable final NearbyPayloadCallback callback) {
         try {
             byte[] bytes = SosPayloadSerializer.serialize(message);
             sendRawPayload(endpointId, bytes, callback);
@@ -353,6 +365,7 @@ public class NearbyConnectionManager {
 
     public interface NearbyPayloadCallback {
         void onSuccess(long payloadId);
+
         void onFailure(String errorMessage);
     }
 
@@ -462,7 +475,8 @@ public class NearbyConnectionManager {
         public void onPayloadReceived(@NonNull String endpointId, @NonNull Payload payload) {
             if (payload.getType() == Payload.Type.BYTES) {
                 byte[] bytes = payload.asBytes();
-                if (bytes != null && listener != null) {
+                if (bytes != null && bytes.length > 0 && bytes.length <= Constants.MAX_PAYLOAD_SIZE_BYTES
+                        && listener != null) {
                     mainHandler.post(() -> listener.onPayloadReceived(endpointId, bytes));
                 }
             }
@@ -474,8 +488,7 @@ public class NearbyConnectionManager {
                 mainHandler.post(() -> listener.onPayloadTransferUpdate(
                         endpointId,
                         update.getPayloadId(),
-                        update.getStatus()
-                ));
+                        update.getStatus()));
             }
         }
     };
@@ -486,7 +499,7 @@ public class NearbyConnectionManager {
 
     public static String[] getRequiredPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+ (API 33+)
-            return new String[]{
+            return new String[] {
                     Manifest.permission.BLUETOOTH_SCAN,
                     Manifest.permission.BLUETOOTH_ADVERTISE,
                     Manifest.permission.BLUETOOTH_CONNECT,
@@ -494,14 +507,14 @@ public class NearbyConnectionManager {
                     Manifest.permission.ACCESS_FINE_LOCATION
             };
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // Android 12 / 12L (API 31-32)
-            return new String[]{
+            return new String[] {
                     Manifest.permission.BLUETOOTH_SCAN,
                     Manifest.permission.BLUETOOTH_ADVERTISE,
                     Manifest.permission.BLUETOOTH_CONNECT,
                     Manifest.permission.ACCESS_FINE_LOCATION
             };
         } else { // Android 8.0 - 11 (API 26-30)
-            return new String[]{
+            return new String[] {
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION
             };
@@ -524,7 +537,9 @@ public class NearbyConnectionManager {
 
     public static boolean isLocationEnabled(@NonNull Context context) {
         LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-        if (lm == null) return false;
-        return lm.isProviderEnabled(LocationManager.GPS_PROVIDER) || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        if (lm == null)
+            return false;
+        return lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                || lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
     }
 }
