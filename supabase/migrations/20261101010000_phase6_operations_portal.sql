@@ -65,6 +65,10 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON public.user_profiles(role);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON public.user_profiles(email);
 
+-- Compatibility view mapping user_roles to user_profiles
+CREATE OR REPLACE VIEW public.user_roles AS
+    SELECT id AS user_id, role, organization FROM public.user_profiles;
+
 -- 5. Response Teams Table
 CREATE TABLE IF NOT EXISTS public.response_teams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

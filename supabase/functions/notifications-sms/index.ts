@@ -288,9 +288,9 @@ serve(async (req: Request) => {
 
     // 2. Authorize Role (SUPER_ADMIN, CONTROL_ROOM_OPERATOR, FIELD_RESPONSE_COORDINATOR)
     const { data: userRoleData } = await supabase
-      .from("user_roles")
+      .from("user_profiles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("id", user.id)
       .single();
 
     const role = userRoleData?.role || "VIEWER";

@@ -133,70 +133,76 @@ ALTER TABLE public.sms_notification_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sms_delivery_attempts ENABLE ROW LEVEL SECURITY;
 
 -- sms_recipient_preferences: Read/Write restricted to authenticated staff
+DROP POLICY IF EXISTS sms_recipient_preferences_select ON public.sms_recipient_preferences;
 CREATE POLICY sms_recipient_preferences_select ON public.sms_recipient_preferences
     FOR SELECT TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM public.user_roles ur 
-            WHERE ur.user_id = auth.uid() 
-            AND ur.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
+            SELECT 1 FROM public.user_profiles up 
+            WHERE up.id = auth.uid() 
+            AND up.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
         )
     );
 
+DROP POLICY IF EXISTS sms_recipient_preferences_insert_update ON public.sms_recipient_preferences;
 CREATE POLICY sms_recipient_preferences_insert_update ON public.sms_recipient_preferences
     FOR ALL TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM public.user_roles ur 
-            WHERE ur.user_id = auth.uid() 
-            AND ur.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR')
+            SELECT 1 FROM public.user_profiles up 
+            WHERE up.id = auth.uid() 
+            AND up.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR')
         )
     );
 
 -- sms_provider_configuration: Read-only for authenticated operators, write for SUPER_ADMIN
+DROP POLICY IF EXISTS sms_provider_configuration_select ON public.sms_provider_configuration;
 CREATE POLICY sms_provider_configuration_select ON public.sms_provider_configuration
     FOR SELECT TO authenticated
     USING (true);
 
+DROP POLICY IF EXISTS sms_provider_configuration_admin ON public.sms_provider_configuration;
 CREATE POLICY sms_provider_configuration_admin ON public.sms_provider_configuration
     FOR ALL TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM public.user_roles ur 
-            WHERE ur.user_id = auth.uid() 
-            AND ur.role = 'SUPER_ADMIN'
+            SELECT 1 FROM public.user_profiles up 
+            WHERE up.id = auth.uid() 
+            AND up.role = 'SUPER_ADMIN'
         )
     );
 
 -- sms_notification_requests: Authorized personnel can view and queue
+DROP POLICY IF EXISTS sms_notification_requests_select ON public.sms_notification_requests;
 CREATE POLICY sms_notification_requests_select ON public.sms_notification_requests
     FOR SELECT TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM public.user_roles ur 
-            WHERE ur.user_id = auth.uid() 
-            AND ur.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
+            SELECT 1 FROM public.user_profiles up 
+            WHERE up.id = auth.uid() 
+            AND up.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
         )
     );
 
+DROP POLICY IF EXISTS sms_notification_requests_insert ON public.sms_notification_requests;
 CREATE POLICY sms_notification_requests_insert ON public.sms_notification_requests
     FOR INSERT TO authenticated
     WITH CHECK (
         EXISTS (
-            SELECT 1 FROM public.user_roles ur 
-            WHERE ur.user_id = auth.uid() 
-            AND ur.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
+            SELECT 1 FROM public.user_profiles up 
+            WHERE up.id = auth.uid() 
+            AND up.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
         )
     );
 
 -- sms_delivery_attempts: Read-only audit log for authorized staff
+DROP POLICY IF EXISTS sms_delivery_attempts_select ON public.sms_delivery_attempts;
 CREATE POLICY sms_delivery_attempts_select ON public.sms_delivery_attempts
     FOR SELECT TO authenticated
     USING (
         EXISTS (
-            SELECT 1 FROM public.user_roles ur 
-            WHERE ur.user_id = auth.uid() 
-            AND ur.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
+            SELECT 1 FROM public.user_profiles up 
+            WHERE up.id = auth.uid() 
+            AND up.role IN ('SUPER_ADMIN', 'CONTROL_ROOM_OPERATOR', 'FIELD_RESPONSE_COORDINATOR')
         )
     );
-
