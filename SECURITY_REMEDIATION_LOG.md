@@ -81,3 +81,4 @@ This document records the exact vulnerabilities, reliability bugs, and performan
 - **Vulnerability**: Background synchronization workers did not declare explicit exponential backoff criteria on work requests, risking server hammering on unstable disaster networks.
 - **Remediation**: Added `.setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)` for one-time sync and 30 seconds for periodic sync.
 - **Verification**: `NetworkResilienceTest.testExponentialBackoffProgression`.
+

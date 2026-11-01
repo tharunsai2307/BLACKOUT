@@ -38,3 +38,4 @@
    - BLACKOUT is a resilient, offline-first peer-to-peer disaster communication prototype. It does not claim direct integration with official government Emergency Alert Systems (EAS), Common Alerting Protocol (CAP) national gateways, or 911/112 public safety answering points without formal memorandum of understanding (MoU).
 2. **Phase Boundaries**:
    - In accordance with the Phase 8 Master Prompt constraints, no Phase 9 features were initiated, no production APKs were published to app stores, and no public domains were configured.
+

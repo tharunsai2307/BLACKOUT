@@ -73,3 +73,4 @@ Evaluated via production build (`npm --prefix web run build`) and Vitest benchma
 1. **Relay Payload Pruning**: For deployments exceeding 5,000 SOS messages, schedule SQLite VACUUM and automated purge of messages past `Constants.PACKET_TTL_MILLIS` (48 hours).
 2. **Web Code Splitting**: Leverage dynamic `import()` on heavy operational views (e.g., LiveMap, Analytics) to split the primary JavaScript chunk below 500 kB.
 3. **Database Indexing**: All high-cardinality query columns (`status`, `verificationStatus`, `expiresAt`, `priority`, `nextAttemptAt`) have dedicated b-tree indexes established in migrations v1 $\to$ v4.
+
