@@ -74,7 +74,8 @@ public final class Constants {
     public static final String UPLOAD_STATUS_EXPIRED = "EXPIRED";
 
     // Default Supabase Configuration (Phase 5)
-    public static final String DEFAULT_SUPABASE_URL = "https://your-project-id.supabase.co";
+    public static final String DEFAULT_SUPABASE_URL = "https://cogmzcchrhdfeqokfwua.supabase.co";
+    public static final String DEFAULT_SUPABASE_JWKS_URL = "https://cogmzcchrhdfeqokfwua.supabase.co/auth/v1/.well-known/jwks.json";
     public static final String DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_i4TteJdAqTwsjaoohkC18g_fmW7EW2E";
     public static final String PREF_SUPABASE_URL = "pref_supabase_url";
     public static final String PREF_SUPABASE_ANON_KEY = "pref_supabase_anon_key";
