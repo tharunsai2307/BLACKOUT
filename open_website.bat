@@ -1,4 +1,11 @@
 @echo off
+setlocal enabledelayedexpansion
 title Launch BLACKOUT Portal
-cd /d "%~dp0"
-call "%~dp0start_operations_portal.bat"
+
+set "SCRIPT_DIR=%~dp0"
+if exist "%SCRIPT_DIR%start_operations_portal.bat" (
+    call "%SCRIPT_DIR%start_operations_portal.bat"
+) else (
+    echo [ERROR] start_operations_portal.bat not found in: %SCRIPT_DIR%
+    pause
+)
