@@ -36,3 +36,5 @@ web/.env.local
 supabase/.env
 supabase/.env.local
 app/google-services.json
+*.apk
+*.aab
