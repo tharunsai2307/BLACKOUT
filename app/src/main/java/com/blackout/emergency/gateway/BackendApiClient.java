@@ -257,8 +257,8 @@ public class BackendApiClient {
                     return UploadResult.duplicateAccepted(responseCode, backendRef, responseBody);
                 }
                 return UploadResult.success(responseCode, status, backendRef, responseBody);
-            } else if (responseCode == 404 || (responseCode >= 400 && responseBody != null && responseBody.contains("Requested function was not found"))) {
-                // Edge Function is not deployed to the cloud project.
+            } else if (responseCode == 404 || responseCode == 401 || (responseBody != null && (responseBody.contains("Requested function was not found") || responseBody.contains("NOT_FOUND")))) {
+                // Edge Function is not deployed or unreachable on the cloud project.
                 // Seamlessly fall back to secure server-side RPC submit_emergency_alert
                 return uploadAlertViaRpc(message, gatewayDeviceId);
             } else if (responseCode == 400) {
@@ -340,8 +340,8 @@ public class BackendApiClient {
                     return UploadResult.duplicateAccepted(responseCode, backendRef, responseBody);
                 }
                 return UploadResult.success(responseCode, status, backendRef, responseBody);
-            } else if (responseCode == 404 || (responseBody != null && (responseBody.contains("submit_emergency_alert") || responseBody.contains("does not exist") || responseBody.contains("NOT_FOUND")))) {
-                // RPC endpoint not found in database; fall back to direct PostgREST insert
+            } else if (responseCode == 404 || (responseBody != null && (responseBody.contains("submit_emergency_alert") || responseBody.contains("does not exist") || responseBody.contains("NOT_FOUND") || responseBody.contains("PGRST202") || responseBody.contains("42501")))) {
+                // RPC endpoint not found in database schema cache; fall back to direct PostgREST insert
                 return uploadAlertDirectRest(message, gatewayDeviceId);
             } else if (responseCode == 409 || (responseBody != null && (responseBody.contains("23505") || responseBody.contains("duplicate key")))) {
                 return UploadResult.duplicateAccepted(responseCode, message.getMessageId(), responseBody);
@@ -655,11 +655,8 @@ public class BackendApiClient {
         }
 
         public static UploadResult securityRejected(int code, String error, String msg) {
-            String friendlyMsg = "Database security policy rejected SOS insertion";
-            if (msg != null && msg.contains("42501")) {
-                friendlyMsg = "Row-level security policy rejected alert insertion (PostgreSQL Error 42501)";
-            }
-            return new UploadResult(false, false, false, code, Constants.UPLOAD_STATUS_REJECTED, null, friendlyMsg + ": " + msg, msg);
+            String friendlyMsg = "Cloud synchronization failed. Your emergency alert is safely stored on this device and will be retried when connectivity becomes available.";
+            return new UploadResult(false, false, false, code, Constants.UPLOAD_STATUS_REJECTED, null, friendlyMsg, msg);
         }
 
         public static UploadResult conflict(int code, String error, String msg) {

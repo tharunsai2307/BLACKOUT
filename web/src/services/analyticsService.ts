@@ -25,6 +25,30 @@ export const analyticsService = {
     }
 
     try {
+      // 1. Attempt high-performance SQL aggregation RPC (0 client-side memory overhead)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_operational_analytics_summary', {
+        p_date_from: dateFrom || null,
+        p_date_to: dateTo || null,
+      });
+
+      if (!rpcError && rpcData && typeof rpcData === 'object' && 'totalAlerts' in rpcData) {
+        return {
+          data: {
+            totalAlerts: Number(rpcData.totalAlerts) || 0,
+            categoryDistribution: rpcData.categoryDistribution || {},
+            priorityDistribution: rpcData.priorityDistribution || {},
+            statusDistribution: rpcData.statusDistribution || {},
+            verificationDistribution: rpcData.verificationDistribution || {},
+            hopCountDistribution: rpcData.hopCountDistribution || {},
+            gatewayDistribution: rpcData.gatewayDistribution || {},
+            locationFixStats: rpcData.locationFixStats || { withGps: 0, withoutGps: 0, percentageWithGps: 0 },
+            dailyTrend: rpcData.dailyTrend || [],
+          },
+          error: null,
+        };
+      }
+
+      // 2. Fallback to direct query if RPC is pending migration
       let query = supabase
         .from('emergency_alerts')
         .select('id, category, priority, operator_status, verification_status, hop_count, gateway_device_id, latitude, longitude, created_at')

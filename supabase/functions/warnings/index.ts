@@ -10,6 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { redis } from "../_shared/redis.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -222,9 +223,16 @@ serve(async (req: Request) => {
 
   try {
     // -------------------------------------------------------------------------
-    // 1. GET /warning-keys: Retrieve trusted public keys
+    // 1. GET /warning-keys: Retrieve trusted public keys (Cached in Redis)
     // -------------------------------------------------------------------------
     if (req.method === "GET" && (path.endsWith("/warning-keys") || path.endsWith("/keys"))) {
+      const cachedKeys = await redis.cacheGet<any>("warnings:keys");
+      if (cachedKeys) {
+        return new Response(JSON.stringify({ keys: cachedKeys, cached: true, source: "upstash-redis" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+        });
+      }
+
       const { data, error } = await supabase
         .from("warning_signing_keys")
         .select("*")
@@ -237,15 +245,26 @@ serve(async (req: Request) => {
         });
       }
 
-      return new Response(JSON.stringify({ keys: data || [] }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (data) {
+        await redis.cacheSet("warnings:keys", data, 3600); // 1 hour TTL
+      }
+
+      return new Response(JSON.stringify({ keys: data || [], cached: false, source: "postgresql" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
       });
     }
 
     // -------------------------------------------------------------------------
-    // 2. GET /warnings/active: Retrieve currently published, unexpired warnings
+    // 2. GET /warnings/active: Retrieve published active warnings (Cached in Redis)
     // -------------------------------------------------------------------------
     if (req.method === "GET" && path.endsWith("/active")) {
+      const cachedWarnings = await redis.cacheGet<any>("warnings:active");
+      if (cachedWarnings) {
+        return new Response(JSON.stringify({ warnings: cachedWarnings, cached: true, source: "upstash-redis" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+        });
+      }
+
       const nowIso = new Date().toISOString();
       const { data, error } = await supabase
         .from("public_warnings")
@@ -261,8 +280,12 @@ serve(async (req: Request) => {
         });
       }
 
-      return new Response(JSON.stringify({ warnings: data || [] }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (data) {
+        await redis.cacheSet("warnings:active", data, 30); // 30 seconds TTL
+      }
+
+      return new Response(JSON.stringify({ warnings: data || [], cached: false, source: "postgresql" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
       });
     }
 
@@ -298,6 +321,30 @@ serve(async (req: Request) => {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+
+        // Redis-Backed Rate Limiting on Warning Signing (10 ops/min)
+        const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown-ip";
+        const rateLimit = await redis.checkRateLimit("warning:sign", clientIp, 10, 60);
+        if (!rateLimit.allowed) {
+          return new Response(
+            JSON.stringify({
+              error: "RATE_LIMIT_EXCEEDED",
+              message: "Warning signing rate limit exceeded (max 10 operations/min). Please wait.",
+              retryAfter: rateLimit.retryAfterSeconds,
+            }),
+            {
+              status: 429,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
+                "Retry-After": String(rateLimit.retryAfterSeconds),
+                "X-RateLimit-Limit": String(rateLimit.limit),
+                "X-RateLimit-Remaining": String(rateLimit.remaining),
+                "X-RateLimit-Reset": String(rateLimit.reset),
+              },
+            }
+          );
         }
 
         // Enforce RBAC Authentication: Only SUPER_ADMIN and PUBLIC_WARNING_PUBLISHER can sign warnings
@@ -454,6 +501,9 @@ serve(async (req: Request) => {
           },
         });
 
+        // Invalidate active warnings cache in Redis
+        await redis.cacheInvalidate("warnings:active");
+
         return new Response(
           JSON.stringify({
             success: true,
@@ -595,6 +645,9 @@ serve(async (req: Request) => {
           actor_id: auth.user?.id,
         },
       });
+
+      // Invalidate active warnings cache in Redis
+      await redis.cacheInvalidate("warnings:active");
 
       return new Response(
         JSON.stringify({ success: true, warning: updatedWarning, revocationSignature }),

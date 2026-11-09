@@ -40,7 +40,10 @@ export const LiveMap: React.FC = () => {
   };
 
   useEffect(() => {
-    loadIncidents();
+    const timer = setTimeout(() => {
+      loadIncidents();
+    }, 250);
+    return () => clearTimeout(timer);
   }, [priorityFilter, statusFilter, categoryFilter]);
 
   // Realtime updates

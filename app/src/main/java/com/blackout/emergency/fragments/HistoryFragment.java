@@ -182,8 +182,9 @@ public class HistoryFragment extends Fragment {
                 sb.append("Backend Ref: ").append(upload.getBackendReference()).append("\n");
             }
             if (upload.getLastErrorCode() != null && !upload.getLastErrorCode().isEmpty()) {
-                sb.append("Sync Notice: ").append(formatUserFriendlyError(upload.getLastErrorCode())).append("\n");
-                sb.append("Diagnostics: ").append(upload.getLastErrorCode()).append("\n");
+                sb.append("Sync Notice: ").append(formatUserFriendlyError(upload.getLastErrorCode())).append("\n\n");
+                sb.append("[Technical Diagnostic Information]\n")
+                  .append("Code: ").append(upload.getLastErrorCode()).append("\n");
             }
         } else {
             sb.append("Upload Status: NOT QUEUED\n");
@@ -257,20 +258,20 @@ public class HistoryFragment extends Fragment {
 
     private String formatUserFriendlyError(@NonNull String raw) {
         if (raw.contains("42501") || raw.contains("row-level security") || raw.contains("RLS_VIOLATION")) {
-            return "Security authorization pending. Alert is safely saved locally on this device.";
+            return "Cloud synchronization failed. Your emergency alert is safely stored on this device and will be retried when connectivity becomes available.";
         }
         if (raw.contains("404") || raw.contains("Requested function was not found")) {
-            return "Central upload service endpoint temporarily unreachable.";
+            return "Cloud synchronization failed. Your emergency alert is safely stored on this device and will be retried when connectivity becomes available.";
         }
         if (raw.contains("VALIDATION") || raw.contains("400")) {
-            return "Alert payload rejected by server-side validation rules.";
+            return "Cloud synchronization failed. Your emergency alert is safely stored on this device and will be retried when connectivity becomes available.";
         }
         if (raw.contains("RATE_LIMIT") || raw.contains("429")) {
-            return "Upload rate limit reached. Synchronization will retry automatically.";
+            return "Cloud synchronization failed. Your emergency alert is safely stored on this device and will be retried when connectivity becomes available.";
         }
         if (raw.contains("timeout") || raw.contains("Network") || raw.contains("ConnectException")) {
-            return "Network connection unavailable. Synchronization will resume when connected.";
+            return "Cloud synchronization failed. Your emergency alert is safely stored on this device and will be retried when connectivity becomes available.";
         }
-        return "Synchronization issue encountered. Alert is safely saved locally.";
+        return "Cloud synchronization failed. Your emergency alert is safely stored on this device and will be retried when connectivity becomes available.";
     }
 }

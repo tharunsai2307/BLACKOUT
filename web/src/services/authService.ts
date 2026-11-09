@@ -35,6 +35,34 @@ const LOCAL_SESSION_KEY = 'blackout_ops_session';
 export const authService = {
   async login(email: string, password: string): Promise<{ profile: UserProfile | null; error: string | null }> {
     const cleanEmail = email.trim().toLowerCase();
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    // 0. Check Redis brute-force rate limit before processing authentication
+    if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+      try {
+        const checkRes = await fetch(`${supabaseUrl}/functions/v1/emergency-alerts/auth-rate-limit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: anonKey || '',
+            Authorization: `Bearer ${anonKey || ''}`,
+          },
+          body: JSON.stringify({ email: cleanEmail, action: 'check' }),
+        });
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData.allowed === false) {
+            return {
+              profile: null,
+              error: 'Too many failed login attempts. Account temporarily locked for 15 minutes to prevent brute-force attacks.',
+            };
+          }
+        }
+      } catch {
+        // Non-blocking fail-open on network or edge function failure
+      }
+    }
 
     // 1. First attempt Supabase remote authentication
     try {
@@ -54,6 +82,20 @@ export const authService = {
             };
           }
           localStorage.removeItem(LOCAL_SESSION_KEY);
+
+          // Clear failure counter in Redis upon successful login
+          if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+            fetch(`${supabaseUrl}/functions/v1/emergency-alerts/auth-rate-limit`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: anonKey || '',
+                Authorization: `Bearer ${anonKey || ''}`,
+              },
+              body: JSON.stringify({ email: cleanEmail, action: 'clear' }),
+            }).catch(() => {});
+          }
+
           await auditService.logAction({
             actorId: profile.id,
             actorEmail: profile.email,
@@ -132,6 +174,19 @@ export const authService = {
 
       localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(localSession));
       return { profile: localProfile, error: null };
+    }
+
+    // Record failure in Redis brute-force tracker
+    if (supabaseUrl && !supabaseUrl.includes('placeholder')) {
+      fetch(`${supabaseUrl}/functions/v1/emergency-alerts/auth-rate-limit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: anonKey || '',
+          Authorization: `Bearer ${anonKey || ''}`,
+        },
+        body: JSON.stringify({ email: cleanEmail, action: 'record_failure' }),
+      }).catch(() => {});
     }
 
     return {

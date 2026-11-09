@@ -26,3 +26,4 @@ WHERE email = 'admin@blackout.ops';
 UPDATE public.user_profiles
 SET role = 'SUPER_ADMIN'
 WHERE email = 'tharunsai2307@gmail.com';
+

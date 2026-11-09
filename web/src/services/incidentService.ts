@@ -379,6 +379,49 @@ export const incidentService = {
     }
 
     try {
+      // 1. Attempt Upstash Redis-cached stats endpoint (sub-10ms edge response)
+      try {
+        const statsEndpoint = `${supabaseUrl}/functions/v1/emergency-alerts/stats`;
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const edgeRes = await fetch(statsEndpoint, {
+          headers: {
+            apikey: anonKey || '',
+            Authorization: `Bearer ${anonKey || ''}`,
+          },
+        });
+        if (edgeRes.ok) {
+          const edgeData = await edgeRes.json();
+          if (edgeData && 'totalReceived' in edgeData) {
+            return {
+              totalReceived: Number(edgeData.totalReceived) || 0,
+              awaitingVerification: Number(edgeData.awaitingVerification) || 0,
+              verifiedActive: Number(edgeData.verifiedActive) || 0,
+              assignedCount: Number(edgeData.assignedCount) || 0,
+              resolvedCount: Number(edgeData.resolvedCount) || 0,
+              expiredCount: Number(edgeData.expiredCount) || 0,
+              error: null,
+            };
+          }
+        }
+      } catch {
+        // Non-blocking fallback to PostgreSQL
+      }
+
+      // 2. Attempt high-performance SQL aggregation RPC (0 client-side memory overhead)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_incident_stats_summary');
+      if (!rpcError && rpcData) {
+        return {
+          totalReceived: Number(rpcData.totalReceived) || 0,
+          awaitingVerification: Number(rpcData.awaitingVerification) || 0,
+          verifiedActive: Number(rpcData.verifiedActive) || 0,
+          assignedCount: Number(rpcData.assignedCount) || 0,
+          resolvedCount: Number(rpcData.resolvedCount) || 0,
+          expiredCount: Number(rpcData.expiredCount) || 0,
+          error: null,
+        };
+      }
+
+      // 2. Fallback to direct count query if RPC is pending migration
       const { data: alerts, error } = await supabase
         .from('emergency_alerts')
         .select('verification_status, operator_status, assigned_team_id, expires_at');

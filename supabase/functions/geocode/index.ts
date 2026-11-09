@@ -1,8 +1,13 @@
 // BLACKOUT Decentralized Emergency Communications Platform
 // Supabase Edge Function: /geocode
 // Server-Side Geoapify Location Enrichment & Forward Search Gateway
+// Upstash Redis Features:
+// 1. IP-based Rate Limiting (60 requests / minute) with Retry-After header
+// 2. Persistent Geocoding Result Caching (24-hour TTL) across serverless instances
+// 3. Fallback to in-memory cache and direct API if Redis is unreachable
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { redis } from "../_shared/redis.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,9 +15,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 
-// In-Memory Geocoding LRU Cache (Up to 200 spatial points)
-const cache = new Map<string, { data: any; expiresAt: number }>();
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache for reverse geocode coordinates
+// In-Memory Geocoding Fallback Cache (used if Redis is offline)
+const inMemoryCache = new Map<string, { data: any; expiresAt: number }>();
+const IN_MEMORY_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -21,19 +26,50 @@ serve(async (req: Request) => {
 
   const url = new URL(req.url);
   const path = url.pathname;
-  const apiKey = Deno.env.get("GEOAPIFY_API_KEY");
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown-ip";
 
-  if (!apiKey) {
-    return new Response(JSON.stringify({
-      error: "Geoapify API key not configured on server",
-      code: "GEOAPIFY_KEY_MISSING",
-    }), {
-      status: 503,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  // --------------------------------------------------------------------------
+  // 1. Redis-Backed Rate Limiting (60 requests per minute per IP)
+  // --------------------------------------------------------------------------
+  const rateLimit = await redis.checkRateLimit("geocode", clientIp, 60, 60);
+  if (!rateLimit.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: "RATE_LIMIT_EXCEEDED",
+        message: "Geocoding and map search rate limit exceeded. Please retry later.",
+        retryAfter: rateLimit.retryAfterSeconds,
+      }),
+      {
+        status: 429,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+          "X-RateLimit-Limit": String(rateLimit.limit),
+          "X-RateLimit-Remaining": String(rateLimit.remaining),
+          "X-RateLimit-Reset": String(rateLimit.reset),
+        },
+      }
+    );
   }
 
-  // 1. Reverse Geocoding: /geocode/reverse?lat=...&lon=...
+  const apiKey = Deno.env.get("GEOAPIFY_API_KEY");
+  if (!apiKey) {
+    return new Response(
+      JSON.stringify({
+        error: "Geoapify API key not configured on server",
+        code: "GEOAPIFY_KEY_MISSING",
+      }),
+      {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // 2. Reverse Geocoding: /geocode/reverse?lat=...&lon=...
+  // --------------------------------------------------------------------------
   if (path.endsWith("/reverse") || url.searchParams.has("lat")) {
     const latStr = url.searchParams.get("lat");
     const lonStr = url.searchParams.get("lon");
@@ -55,13 +91,24 @@ serve(async (req: Request) => {
       });
     }
 
-    // Cache key rounded to ~11 meters (4 decimal places)
-    const cacheKey = `rev:${lat.toFixed(4)}:${lon.toFixed(4)}`;
-    const cached = cache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return new Response(JSON.stringify({ ...cached.data, cached: true }), {
+    // Cache key rounded to ~11 metres (4 decimal places)
+    const redisCacheKey = `geo:rev:${lat.toFixed(4)}:${lon.toFixed(4)}`;
+
+    // 2.1 Check Upstash Redis Cache first
+    const cachedRedis = await redis.get<any>(redisCacheKey);
+    if (cachedRedis) {
+      return new Response(JSON.stringify({ ...cachedRedis, cached: true, source: "upstash-redis" }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+      });
+    }
+
+    // 2.2 Check in-memory fallback cache
+    const memCached = inMemoryCache.get(redisCacheKey);
+    if (memCached && memCached.expiresAt > Date.now()) {
+      return new Response(JSON.stringify({ ...memCached.data, cached: true, source: "in-memory-fallback" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
       });
     }
 
@@ -90,11 +137,13 @@ serve(async (req: Request) => {
       const feature = raw.features && raw.features.length > 0 ? raw.features[0] : null;
 
       if (!feature) {
-        return new Response(JSON.stringify({
+        const noAddressResult = {
           formatted: null,
           isApproximate: true,
           message: "No address found for these coordinates",
-        }), {
+        };
+        await redis.set(redisCacheKey, noAddressResult, { ex: 3600 });
+        return new Response(JSON.stringify(noAddressResult), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -110,39 +159,58 @@ serve(async (req: Request) => {
         country: p.country || null,
         postalCode: p.postcode || null,
         confidence: p.rank?.confidence || 0.8,
-        isApproximate: true, // Always marked approximate for emergency triage
+        isApproximate: true,
         originalCoordinates: { latitude: lat, longitude: lon },
       };
 
-      // Store in LRU cache
-      if (cache.size > 200) {
-        const firstKey = cache.keys().next().value;
-        if (firstKey) cache.delete(firstKey);
-      }
-      cache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+      // 2.3 Store in Redis with 24-hour TTL (86400s)
+      await redis.set(redisCacheKey, result, { ex: 86400 });
 
-      return new Response(JSON.stringify(result), {
+      // Store in memory fallback as well
+      if (inMemoryCache.size > 200) {
+        const firstKey = inMemoryCache.keys().next().value;
+        if (firstKey) inMemoryCache.delete(firstKey);
+      }
+      inMemoryCache.set(redisCacheKey, { data: result, expiresAt: Date.now() + IN_MEMORY_TTL_MS });
+
+      return new Response(JSON.stringify({ ...result, cached: false, source: "geoapify" }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
       });
     } catch (err: any) {
-      return new Response(JSON.stringify({
-        error: err.name === "AbortError" ? "Reverse geocode request timed out" : "Failed to reach Geoapify service",
-        code: "TIMEOUT_OR_NETWORK",
-      }), {
-        status: 504,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: err.name === "AbortError" ? "Reverse geocode request timed out" : "Failed to reach Geoapify service",
+          code: "TIMEOUT_OR_NETWORK",
+        }),
+        {
+          status: 504,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
   }
 
-  // 2. Forward Geocoding: /geocode/search?text=...
+  // --------------------------------------------------------------------------
+  // 3. Forward Geocoding: /geocode/search?text=...
+  // --------------------------------------------------------------------------
   if (path.endsWith("/search") || url.searchParams.has("text")) {
-    const query = url.searchParams.get("text");
-    if (!query || query.trim().length === 0) {
+    const query = url.searchParams.get("text")?.trim();
+    if (!query || query.length === 0) {
       return new Response(JSON.stringify({ error: "Missing search text query parameter" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const redisSearchKey = `geo:search:${encodeURIComponent(query.toLowerCase())}`;
+
+    // 3.1 Check Redis search cache (24h TTL)
+    const cachedSearch = await redis.get<any>(redisSearchKey);
+    if (cachedSearch) {
+      return new Response(JSON.stringify({ results: cachedSearch, cached: true, source: "upstash-redis" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
       });
     }
 
@@ -170,9 +238,12 @@ serve(async (req: Request) => {
         country: f.properties?.country,
       }));
 
-      return new Response(JSON.stringify({ results }), {
+      // Store in Redis (24h TTL)
+      await redis.set(redisSearchKey, results, { ex: 86400 });
+
+      return new Response(JSON.stringify({ results, cached: false, source: "geoapify" }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
       });
     } catch (err: any) {
       return new Response(JSON.stringify({ error: "Search query failed or timed out" }), {
@@ -187,4 +258,3 @@ serve(async (req: Request) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
-
