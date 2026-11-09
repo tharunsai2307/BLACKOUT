@@ -2,6 +2,7 @@ package com.blackout.emergency.models;
 
 import com.blackout.emergency.utils.Constants;
 import java.io.Serializable;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -220,5 +221,12 @@ public class EmergencyMessage implements Serializable {
 
     public boolean hasCoordinates() {
         return latitude != null && longitude != null;
+    }
+
+    public String getLocationDisplayString() {
+        if (hasCoordinates()) {
+            return String.format(Locale.US, "%.4f, %.4f", latitude, longitude);
+        }
+        return null;
     }
 }

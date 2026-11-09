@@ -13,11 +13,14 @@ export const Navbar: React.FC = () => {
     <header className="h-16 bg-operations-surface border-b border-operations-border px-4 lg:px-6 flex items-center justify-between select-none z-30 sticky top-0">
       {/* Brand & Operation Identifier */}
       <div className="flex items-center space-x-3">
-        <img
-          src="/logo.png"
-          alt="BLACKOUT"
-          className="w-9 h-9 rounded object-cover border border-operations-red/40 shadow-sm shadow-operations-red/20"
-        />
+        <div className="relative group perspective-container">
+          <img
+            src="/logo.png"
+            alt="BLACKOUT"
+            className="w-10 h-10 rounded-lg object-cover border border-operations-cyan/50 shadow-md shadow-operations-cyan/20 animate-beacon-3d group-hover:scale-105 transition-transform duration-300"
+          />
+          <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-operations-red/30 to-operations-cyan/30 blur opacity-40 group-hover:opacity-75 transition-opacity duration-300 -z-10"></div>
+        </div>
         <div>
           <div className="flex items-center space-x-2">
             <span className="font-mono font-black tracking-widest text-white text-base">BLACKOUT</span>

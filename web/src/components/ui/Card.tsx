@@ -7,6 +7,7 @@ interface CardProps {
   title?: string;
   subtitle?: string;
   icon?: React.ReactNode;
+  is3D?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -16,10 +17,13 @@ export const Card: React.FC<CardProps> = ({
   title,
   subtitle,
   icon,
+  is3D = true,
 }) => {
   return (
     <div
-      className={`bg-operations-surface border border-operations-border rounded-lg shadow-sm overflow-hidden ${className}`}
+      className={`bg-operations-surface border border-operations-border rounded-lg shadow-sm overflow-hidden ${
+        is3D ? 'card-3d holographic-edge' : ''
+      } ${className}`}
     >
       {(title || headerAction) && (
         <div className="px-5 py-4 border-b border-operations-border flex items-center justify-between">

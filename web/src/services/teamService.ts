@@ -30,7 +30,24 @@ export const teamService = {
       const { data, error } = await query;
       if (error) throw error;
 
-      return { data: (data as ResponseTeam[]) || [], error: null };
+      const remoteTeams = (data as ResponseTeam[]) || [];
+      const offlineTeams = offlineStore.getTeams();
+      const teamMap = new Map<string, ResponseTeam>();
+
+      // Preserve any locally registered teams that might not yet be in remote DB
+      for (const t of offlineTeams) {
+        teamMap.set(t.callsign.toUpperCase(), t);
+      }
+      for (const t of remoteTeams) {
+        teamMap.set(t.callsign.toUpperCase(), t);
+      }
+
+      let allTeams = Array.from(teamMap.values());
+      if (statusFilter && statusFilter !== 'ALL') {
+        allTeams = allTeams.filter((t) => t.status === statusFilter);
+      }
+
+      return { data: allTeams, error: null };
     } catch (err: any) {
       console.warn('teamService.getResponseTeams network error, falling back to offline units:', err.message);
       let teams = offlineStore.getTeams();
@@ -95,6 +112,23 @@ export const teamService = {
     }
 
     try {
+      // 1. Try secure stored procedure RPC (SECURITY DEFINER)
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('create_response_team', {
+        p_name: newTeam.name,
+        p_callsign: newTeam.callsign,
+        p_team_type: newTeam.team_type,
+        p_contact_phone: newTeam.contact_phone || null,
+        p_base_location: newTeam.base_location || null,
+        p_capacity: newTeam.capacity || 4,
+      });
+
+      if (!rpcErr && rpcData) {
+        const teamObj = rpcData as ResponseTeam;
+        offlineStore.addTeam(teamObj);
+        return { data: teamObj, error: null };
+      }
+
+      // 2. Fallback to direct table insert
       const { data, error } = await supabase
         .from('response_teams')
         .insert({
@@ -111,9 +145,12 @@ export const teamService = {
 
       if (error) throw error;
 
-      return { data: data as ResponseTeam, error: null };
+      if (data) {
+        offlineStore.addTeam(data as ResponseTeam);
+      }
+      return { data: (data as ResponseTeam) || newTeam, error: null };
     } catch (err: any) {
-      console.warn('teamService.createResponseTeam failed on remote, preserved in offline store:', err.message);
+      console.warn('teamService.createResponseTeam preserved in offline store:', err.message);
       return { data: newTeam, error: null };
     }
   },

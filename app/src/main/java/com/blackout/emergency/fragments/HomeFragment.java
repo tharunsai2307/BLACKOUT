@@ -120,6 +120,12 @@ public class HomeFragment extends Fragment {
         btnTriggerSos.setOnClickListener(sosClickListener);
         cardSos.setOnClickListener(sosClickListener);
 
+        // 3D Tactical breathing pulse animation on primary emergency trigger
+        try {
+            android.view.animation.Animation pulseAnim = android.view.animation.AnimationUtils.loadAnimation(requireContext(), R.anim.pulse_3d_beacon);
+            btnTriggerSos.startAnimation(pulseAnim);
+        } catch (Exception ignored) {}
+
         // Quick Navigation to Nearby Mesh Screen
         btnGotoNearby.setOnClickListener(v -> {
             if (getActivity() instanceof MainActivity) {
@@ -286,7 +292,8 @@ public class HomeFragment extends Fragment {
 
             // Category & Time
             tvRecentCategory.setText(latest.getCategory() != null ? latest.getCategory() : Constants.CATEGORY_OTHER);
-            tvRecentTime.setText(DateTimeUtils.formatRelativeTime(latest.getCreatedAt()));
+            long timestamp = latest.getCreatedAt() != null ? latest.getCreatedAt() : System.currentTimeMillis();
+            tvRecentTime.setText(DateTimeUtils.getRelativeTimeSpan(timestamp));
 
             // Description
             String desc = latest.getDescription();

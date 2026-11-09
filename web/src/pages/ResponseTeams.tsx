@@ -65,13 +65,16 @@ export const ResponseTeams: React.FC = () => {
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !newTeamName || !newCallSign) return;
+    if (!newTeamName.trim() || !newCallSign.trim()) {
+      alert('Please provide both Team Name and Tactical Callsign.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       const actor = {
-        id: user.id,
-        email: user.email || 'operator@blackout.ops',
+        id: user?.id || profile?.id || 'op-admin',
+        email: user?.email || profile?.email || 'admin@blackout.ops',
         role: profile?.role || 'CONTROL_ROOM_OPERATOR',
       };
 
@@ -92,7 +95,7 @@ export const ResponseTeams: React.FC = () => {
       setNewCallSign('');
       setNewPhone('');
       setNewBaseStation('');
-      loadTeams();
+      await loadTeams();
     } catch (err: any) {
       alert(`Team creation failed: ${err.message}`);
     } finally {

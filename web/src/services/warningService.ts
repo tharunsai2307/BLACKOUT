@@ -26,7 +26,24 @@ export const warningService = {
       const { data, error } = await query;
       if (error) throw error;
 
-      return { data: (data as PublicWarning[]) || [], error: null };
+      const remoteWarnings = (data as PublicWarning[]) || [];
+      const offlineWarnings = offlineStore.getWarnings();
+      const warningMap = new Map<string, PublicWarning>();
+
+      for (const w of offlineWarnings) {
+        warningMap.set(w.warning_code || w.id, w);
+      }
+      for (const w of remoteWarnings) {
+        warningMap.set(w.warning_code || w.id, w);
+      }
+
+      let allWarnings = Array.from(warningMap.values());
+      if (statusFilter && statusFilter !== 'ALL') {
+        allWarnings = allWarnings.filter((w) => w.status === statusFilter);
+      }
+      allWarnings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      return { data: allWarnings, error: null };
     } catch (err: any) {
       console.warn('warningService.getWarnings network error, falling back to offline warnings:', err.message);
       return { data: offlineStore.getWarnings(statusFilter), error: null };
@@ -73,6 +90,10 @@ export const warningService = {
     const year = new Date().getFullYear();
     const warningCode = `WARN-${year}-${randomSuffix}`;
 
+    const isValidUuid = (val?: string) =>
+      Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+    const createdByUuid = isValidUuid(params.actor?.id) ? params.actor.id : null;
+
     const newWarning: PublicWarning = {
       id: `warn-${Date.now()}`,
       warning_code: warningCode,
@@ -87,7 +108,7 @@ export const warningService = {
       instructions: params.instructions || null,
       issuing_authority: 'National Emergency Operations Command',
       status: 'DRAFT',
-      created_by: params.actor.id || null,
+      created_by: createdByUuid,
       expires_at: params.expiresAt,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -101,6 +122,27 @@ export const warningService = {
     }
 
     try {
+      // 1. Try secure stored procedure RPC (SECURITY DEFINER)
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('create_public_warning', {
+        p_title: newWarning.title,
+        p_description: newWarning.description,
+        p_category: newWarning.category,
+        p_severity: newWarning.severity,
+        p_affected_area: newWarning.affected_area,
+        p_instructions: newWarning.instructions || null,
+        p_latitude: newWarning.latitude || null,
+        p_longitude: newWarning.longitude || null,
+        p_radius_km: newWarning.radius_km || null,
+        p_expires_at: newWarning.expires_at,
+      });
+
+      if (!rpcErr && rpcData) {
+        const warningObj = rpcData as PublicWarning;
+        offlineStore.addWarning(warningObj);
+        return { data: warningObj, error: null };
+      }
+
+      // 2. Fallback to direct table insert
       const { data, error } = await supabase
         .from('public_warnings')
         .insert({
@@ -112,16 +154,19 @@ export const warningService = {
           affected_area: newWarning.affected_area,
           instructions: newWarning.instructions,
           status: 'DRAFT',
-          created_by: params.actor.id || null,
+          created_by: createdByUuid,
           expires_at: params.expiresAt,
         })
         .select('*')
         .single();
 
       if (error) throw error;
-      return { data: data as PublicWarning, error: null };
+      if (data) {
+        offlineStore.addWarning(data as PublicWarning);
+      }
+      return { data: (data as PublicWarning) || newWarning, error: null };
     } catch (err: any) {
-      console.warn('createWarning remote insert failed, saved to offline store:', err.message);
+      console.warn('createWarning preserved in offline store:', err.message);
       return { data: newWarning, error: null };
     }
   },

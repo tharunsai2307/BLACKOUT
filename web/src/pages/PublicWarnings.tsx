@@ -91,14 +91,17 @@ export const PublicWarnings: React.FC = () => {
 
   const handleCreateWarning = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !title.trim() || !description.trim()) return;
+    if (!title.trim() || !description.trim()) {
+      alert('Please provide both Warning Title and Detailed Description.');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
       const actor = {
-        id: user.id,
-        email: user.email || 'operator@blackout.ops',
-        role: profile?.role || 'CONTROL_ROOM_OPERATOR',
+        id: user?.id || profile?.id || 'op-publisher',
+        email: user?.email || profile?.email || 'publisher@blackout.ops',
+        role: profile?.role || 'PUBLIC_WARNING_PUBLISHER',
       };
 
       const expiresAt = new Date(Date.now() + durationHours * 3600 * 1000).toISOString();

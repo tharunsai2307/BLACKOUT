@@ -50,3 +50,104 @@
 .animate-radar {
   animation: radar-pulse 2s infinite;
 }
+
+/* 3D Tactical Perspective & Depth Effects */
+.perspective-container {
+  perspective: 1200px;
+}
+
+.card-3d {
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.card-3d:hover {
+  transform: perspective(1000px) translateY(-5px) rotateX(1.8deg) rotateY(-1.2deg) translateZ(8px);
+  box-shadow: 0 18px 36px -10px rgba(0, 0, 0, 0.7), 0 0 20px rgba(6, 182, 212, 0.18);
+  border-color: rgba(6, 182, 212, 0.45);
+}
+
+.card-3d-red:hover {
+  transform: perspective(1000px) translateY(-5px) rotateX(2deg) rotateY(-1.5deg) translateZ(8px);
+  box-shadow: 0 18px 36px -10px rgba(0, 0, 0, 0.8), 0 0 28px rgba(239, 68, 68, 0.28);
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.card-3d-amber:hover {
+  transform: perspective(1000px) translateY(-5px) rotateX(2deg) rotateY(-1.5deg) translateZ(8px);
+  box-shadow: 0 18px 36px -10px rgba(0, 0, 0, 0.8), 0 0 28px rgba(245, 158, 11, 0.22);
+  border-color: rgba(245, 158, 11, 0.55);
+}
+
+.card-3d-green:hover {
+  transform: perspective(1000px) translateY(-5px) rotateX(2deg) rotateY(-1.5deg) translateZ(8px);
+  box-shadow: 0 18px 36px -10px rgba(0, 0, 0, 0.8), 0 0 28px rgba(16, 185, 129, 0.22);
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+/* 3D Tactical Radar Sweep */
+@keyframes radar-sweep-3d {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-radar-sweep {
+  animation: radar-sweep-3d 4s linear infinite;
+}
+
+/* 3D Floating Beacon Animation */
+@keyframes float-beacon-3d {
+  0%, 100% {
+    transform: translateY(0px) translateZ(0px) rotateX(0deg);
+  }
+  50% {
+    transform: translateY(-4px) translateZ(12px) rotateX(3deg);
+  }
+}
+
+.animate-beacon-3d {
+  animation: float-beacon-3d 5s ease-in-out infinite;
+}
+
+/* 3D Holographic Glint Edge */
+.holographic-edge {
+  position: relative;
+}
+
+.holographic-edge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.6), rgba(255, 255, 255, 0.8), rgba(6, 182, 212, 0.6), transparent);
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* Tactical Pulse Indicator */
+@keyframes pulse-ring-3d {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+}
+
+.animate-pulse-ring-3d {
+  animation: pulse-ring-3d 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

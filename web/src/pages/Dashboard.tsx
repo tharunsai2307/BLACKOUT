@@ -135,14 +135,14 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Primary KPI Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-operations-cyan">
+      {/* Primary KPI Metrics Grid with 3D Depth */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 perspective-container">
+        <Card className="border-l-4 border-l-operations-cyan card-3d">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-mono uppercase text-operations-muted font-semibold tracking-wider">
               Total Ingested
             </span>
-            <Radio className="w-4 h-4 text-operations-cyan" />
+            <Radio className="w-4 h-4 text-operations-cyan animate-pulse" />
           </div>
           <div className="text-2xl font-bold font-mono text-white">
             {isLoading ? '...' : stats?.totalReceived ?? 0}
@@ -152,12 +152,12 @@ export const Dashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="border-l-4 border-l-operations-amber">
+        <Card className="border-l-4 border-l-operations-amber card-3d card-3d-amber">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-mono uppercase text-operations-muted font-semibold tracking-wider">
               Pending Review
             </span>
-            <Clock className="w-4 h-4 text-operations-amber" />
+            <Clock className="w-4 h-4 text-operations-amber animate-pulse" />
           </div>
           <div className="text-2xl font-bold font-mono text-operations-amber">
             {isLoading ? '...' : stats?.awaitingVerification ?? 0}
@@ -167,12 +167,12 @@ export const Dashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="border-l-4 border-l-operations-red">
+        <Card className="border-l-4 border-l-operations-red card-3d card-3d-red">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-mono uppercase text-operations-muted font-semibold tracking-wider">
               Verified Active
             </span>
-            <AlertTriangle className="w-4 h-4 text-operations-red" />
+            <AlertTriangle className="w-4 h-4 text-operations-red animate-bounce" />
           </div>
           <div className="text-2xl font-bold font-mono text-operations-red">
             {isLoading ? '...' : stats?.verifiedActive ?? 0}
@@ -182,7 +182,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="border-l-4 border-l-operations-green">
+        <Card className="border-l-4 border-l-operations-green card-3d card-3d-green">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-mono uppercase text-operations-muted font-semibold tracking-wider">
               Response Units
@@ -308,6 +308,47 @@ export const Dashboard: React.FC = () => {
                 ))}
               </div>
             )}
+          </Card>
+
+          {/* Tactical Mesh Network 3D Radar HUD */}
+          <Card title="Autonomous Mesh 3D Radar" is3D={true} className="border-t-2 border-t-operations-cyan">
+            <div className="flex flex-col items-center justify-center p-3 relative select-none">
+              <div className="relative w-44 h-44 rounded-full border-2 border-operations-cyan/30 bg-operations-bg/90 flex items-center justify-center shadow-inner shadow-cyan-950/50 overflow-hidden">
+                {/* Concentric distance rings */}
+                <div className="absolute w-32 h-32 rounded-full border border-operations-cyan/20"></div>
+                <div className="absolute w-20 h-20 rounded-full border border-operations-cyan/20"></div>
+                <div className="absolute w-8 h-8 rounded-full border border-operations-cyan/30"></div>
+                {/* Crosshairs */}
+                <div className="absolute w-full h-[1px] bg-operations-cyan/20"></div>
+                <div className="absolute h-full w-[1px] bg-operations-cyan/20"></div>
+
+                {/* Rotating 3D Radar Sweep */}
+                <div
+                  className="absolute inset-0 rounded-full animate-radar-sweep pointer-events-none"
+                  style={{
+                    background: 'conic-gradient(from 0deg, rgba(6, 182, 212, 0.45) 0deg, rgba(6, 182, 212, 0) 65deg, transparent 65deg)',
+                  }}
+                ></div>
+
+                {/* Simulated active mesh nodes & SOS beacon pings */}
+                <div className="absolute top-10 left-12 w-2.5 h-2.5 rounded-full bg-operations-red animate-ping" title="Active SOS Beacon"></div>
+                <div className="absolute top-10 left-12 w-2 h-2 rounded-full bg-operations-red"></div>
+
+                <div className="absolute bottom-12 right-14 w-2 h-2 rounded-full bg-operations-cyan animate-pulse" title="Mesh Relay Gateway"></div>
+                <div className="absolute top-16 right-10 w-1.5 h-1.5 rounded-full bg-operations-green" title="Deployed Response Unit"></div>
+
+                {/* Center Station */}
+                <div className="w-3 h-3 rounded-full bg-operations-cyan shadow-md shadow-cyan-400 z-10"></div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between w-full text-[10px] font-mono text-operations-muted">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-operations-cyan animate-ping"></span>
+                  RANGE: 100 KM
+                </span>
+                <span className="text-operations-cyan font-bold tracking-wider">P2P CLUSTER ACTIVE</span>
+              </div>
+            </div>
           </Card>
 
           {/* Incident Category Distribution */}
