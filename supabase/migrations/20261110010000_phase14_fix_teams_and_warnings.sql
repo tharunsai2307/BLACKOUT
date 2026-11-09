@@ -152,3 +152,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.create_public_warning(text, text, text, text, text, text, double precision, double precision, double precision, timestamptz) TO anon, authenticated, service_role;
+
