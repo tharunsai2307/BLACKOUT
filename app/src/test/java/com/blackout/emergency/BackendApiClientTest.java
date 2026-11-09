@@ -262,6 +262,68 @@ public class BackendApiClientTest {
         assertTrue(health.getResponseBody().contains("HEALTHY"));
     }
 
+    @Test
+    public void testBuildDirectRestPayloadContainsSnakeCaseFields() throws Exception {
+        EmergencyMessage msg = createValidMessage();
+        String gatewayId = "GATEWAY-NODE-01";
+
+        JSONObject json = client.buildDirectRestPayload(msg, gatewayId);
+
+        assertEquals(msg.getMessageId(), json.getString("message_id"));
+        assertEquals("DEV-PHONE-A", json.getString("original_sender_device_id"));
+        assertEquals(gatewayId, json.getString("gateway_device_id"));
+        assertEquals(Constants.CATEGORY_MEDICAL, json.getString("category"));
+        assertEquals(msg.getDescription(), json.getString("description"));
+        assertEquals(Constants.PRIORITY_CRITICAL, json.getString("priority"));
+        assertEquals(37.7749, json.getDouble("latitude"), 0.0001);
+        assertEquals(-122.4194, json.getDouble("longitude"), 0.0001);
+        assertEquals(2, json.getInt("hop_count"));
+        assertEquals("ACCEPTED", json.getString("ingestion_status"));
+        assertEquals("NEW", json.getString("operator_status"));
+        assertTrue(json.has("created_at"));
+        assertTrue(json.has("expires_at"));
+        assertTrue(json.has("payload_hash"));
+    }
+
+    @Test
+    public void testUploadAlertFallsBackToDirectRestWhenFunctionNotFound() {
+        // When Edge Function returns HTTP 404 (Requested function was not found),
+        // client should fall back to direct PostgREST insert which returns 201 Created.
+        final String notFoundJson = "{\"code\":\"NOT_FOUND\",\"message\":\"Requested function was not found\"}";
+        final String restSuccessJson = "[{\"id\":\"alert-direct-uuid-99\",\"message_id\":\"msg-uuid-99\"}]";
+
+        client.setConnectionProvider(url -> {
+            if (url.toString().contains("/functions/v1/")) {
+                return new FakeHttpURLConnection(404, notFoundJson);
+            } else if (url.toString().contains("/rest/v1/")) {
+                return new FakeHttpURLConnection(201, restSuccessJson);
+            }
+            return new FakeHttpURLConnection(500, "{}");
+        });
+
+        EmergencyMessage msg = createValidMessage();
+        BackendApiClient.UploadResult result = client.uploadAlert(msg, "GATEWAY-01");
+
+        assertTrue("Upload should succeed via PostgREST fallback", result.isSuccess());
+        assertFalse(result.isDuplicate());
+        assertEquals(201, result.getHttpStatusCode());
+        assertEquals("alert-direct-uuid-99", result.getBackendReference());
+    }
+
+    @Test
+    public void testUploadAlertDirectRestConflictIsDuplicateAccepted() {
+        final String conflictJson = "{\"code\":\"23505\",\"message\":\"duplicate key value violates unique constraint\"}";
+        client.setConnectionProvider(url -> new FakeHttpURLConnection(409, conflictJson));
+
+        EmergencyMessage msg = createValidMessage();
+        BackendApiClient.UploadResult result = client.uploadAlertDirectRest(msg, "GATEWAY-01");
+
+        assertTrue("Duplicate conflict should be treated as duplicate accepted", result.isSuccess());
+        assertTrue(result.isDuplicate());
+        assertEquals(409, result.getHttpStatusCode());
+        assertEquals(msg.getMessageId(), result.getBackendReference());
+    }
+
     // Helper fake HttpURLConnection for testing
     private static class FakeHttpURLConnection extends HttpURLConnection {
         private final int responseCode;

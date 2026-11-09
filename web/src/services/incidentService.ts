@@ -74,8 +74,46 @@ export const incidentService = {
       const offset = options?.offset || 0;
       query = query.range(offset, offset + limit - 1);
 
-      const { data, count, error } = await query;
-      if (error) throw error;
+      let { data, count, error } = await query;
+      if (error) {
+        console.warn('Initial join query on emergency_alerts failed, retrying without assigned_team relation:', error.message);
+        let fallbackQuery = supabase
+          .from('emergency_alerts')
+          .select('*', { count: 'exact' });
+
+        if (options?.category && options.category !== 'ALL') {
+          fallbackQuery = fallbackQuery.eq('category', options.category);
+        }
+        if (options?.priority && options.priority !== 'ALL') {
+          fallbackQuery = fallbackQuery.eq('priority', options.priority);
+        }
+        if (options?.operatorStatus && options.operatorStatus !== 'ALL') {
+          fallbackQuery = fallbackQuery.eq('operator_status', options.operatorStatus);
+        }
+        if (options?.verificationStatus && options.verificationStatus !== 'ALL') {
+          fallbackQuery = fallbackQuery.eq('verification_status', options.verificationStatus);
+        }
+        if (options?.hasCoordinatesOnly) {
+          fallbackQuery = fallbackQuery.not('latitude', 'is', null).not('longitude', 'is', null);
+        }
+        if (options?.dateFrom) {
+          fallbackQuery = fallbackQuery.gte('created_at', options.dateFrom);
+        }
+        if (options?.dateTo) {
+          fallbackQuery = fallbackQuery.lte('created_at', options.dateTo);
+        }
+        if (options?.search && options.search.trim()) {
+          const term = options.search.trim();
+          fallbackQuery = fallbackQuery.or(
+            `description.ilike.%${term}%,message_id.ilike.%${term}%,gateway_device_id.ilike.%${term}%,original_sender_device_id.ilike.%${term}%`
+          );
+        }
+        fallbackQuery = fallbackQuery.order(sortBy, { ascending: sortOrder }).range(offset, offset + limit - 1);
+        const retryRes = await fallbackQuery;
+        if (retryRes.error) throw retryRes.error;
+        data = retryRes.data;
+        count = retryRes.count;
+      }
 
       return {
         data: (data as EmergencyAlert[]) || [],
@@ -158,13 +196,26 @@ export const incidentService = {
     }
 
     try {
-      const { data: alert, error } = await supabase
+      let alert: any = null;
+      const primaryRes = await supabase
         .from('emergency_alerts')
         .select('*, assigned_team:response_teams(id, name, callsign, status, team_type)')
         .or(`id.eq.${id},message_id.eq.${id}`)
         .single();
 
-      if (error) throw error;
+      if (primaryRes.error) {
+        // Fallback without relation join
+        const retryRes = await supabase
+          .from('emergency_alerts')
+          .select('*')
+          .or(`id.eq.${id},message_id.eq.${id}`)
+          .single();
+        if (retryRes.error) throw retryRes.error;
+        alert = retryRes.data;
+      } else {
+        alert = primaryRes.data;
+      }
+
       if (!alert) return { alert: null, uploadHistory: [], events: [], error: 'Incident not found' };
 
       // Fetch Gateway upload history

@@ -7,3 +7,4 @@ if not exist "%APK_PATH%" (
 
 echo Opening File Explorer to BLACKOUT APK...
 explorer.exe /select,"%APK_PATH%"
+

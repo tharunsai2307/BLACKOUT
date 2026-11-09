@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRealtimeStatus } from '../../hooks/useRealtime';
 import { isPlaceholderUrl } from '../../services/offlineStore';
-import { Radio, LogOut, Shield, Wifi, WifiOff, HardDrive } from 'lucide-react';
+import { LogOut, Shield, Wifi, WifiOff, HardDrive } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { profile, logout } = useAuth();
@@ -13,9 +13,11 @@ export const Navbar: React.FC = () => {
     <header className="h-16 bg-operations-surface border-b border-operations-border px-4 lg:px-6 flex items-center justify-between select-none z-30 sticky top-0">
       {/* Brand & Operation Identifier */}
       <div className="flex items-center space-x-3">
-        <div className="w-9 h-9 rounded bg-operations-card border border-operations-red/40 flex items-center justify-center text-operations-red shadow-sm shadow-operations-red/20">
-          <Radio className="w-5 h-5 animate-pulse text-operations-red" />
-        </div>
+        <img
+          src="/logo.png"
+          alt="BLACKOUT"
+          className="w-9 h-9 rounded object-cover border border-operations-red/40 shadow-sm shadow-operations-red/20"
+        />
         <div>
           <div className="flex items-center space-x-2">
             <span className="font-mono font-black tracking-widest text-white text-base">BLACKOUT</span>

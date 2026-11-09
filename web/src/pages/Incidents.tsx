@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { incidentService, IncidentFilterOptions } from '../services/incidentService';
 import { EmergencyAlert, VerificationStatus, EmergencyPriority } from '../types/database';
 import { useAuth } from '../hooks/useAuth';
+import { useRealtimeAlerts } from '../hooks/useRealtime';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -71,6 +72,11 @@ export const Incidents: React.FC = () => {
   useEffect(() => {
     loadIncidents();
   }, [page, categoryFilter, priorityFilter, statusFilter]);
+
+  useRealtimeAlerts((newAlert: EmergencyAlert) => {
+    setIncidents((prev) => [newAlert, ...prev]);
+    setTotalCount((prev) => prev + 1);
+  });
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

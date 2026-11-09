@@ -15,9 +15,12 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -218,6 +221,10 @@ public class BackendApiClient {
                     return UploadResult.duplicateAccepted(responseCode, backendRef, responseBody);
                 }
                 return UploadResult.success(responseCode, status, backendRef, responseBody);
+            } else if (responseCode == 404 || (responseCode >= 400 && responseBody != null && responseBody.contains("Requested function was not found"))) {
+                // Supabase Edge Function is not deployed to the cloud project.
+                // Seamlessly fall back to direct Supabase PostgREST table insert: /rest/v1/emergency_alerts
+                return uploadAlertDirectRest(message, gatewayDeviceId);
             } else if (responseCode == 400) {
                 String error = "VALIDATION_FAILED";
                 String msg = responseBody;
@@ -267,6 +274,9 @@ public class BackendApiClient {
 
             if (responseCode == 200) {
                 return new HealthResult(true, responseCode, body, null);
+            } else if (responseCode == 404 || (body != null && body.contains("Requested function was not found"))) {
+                // Edge Function health endpoint not found; fallback to direct PostgREST health
+                return checkDirectRestHealth();
             } else {
                 return new HealthResult(false, responseCode, body, "HTTP " + responseCode);
             }
@@ -276,6 +286,187 @@ public class BackendApiClient {
             if (connection != null) {
                 connection.disconnect();
             }
+        }
+    }
+
+    /**
+     * Fallback upload mechanism directly inserting into the Supabase 'emergency_alerts' table
+     * via PostgREST (/rest/v1/emergency_alerts) when Edge Functions are not deployed.
+     */
+    @NonNull
+    public UploadResult uploadAlertDirectRest(@NonNull EmergencyMessage message, @Nullable String gatewayDeviceId) {
+        HttpURLConnection connection = null;
+        try {
+            String endpoint = normalizeUrl(baseUrl) + "/rest/v1/emergency_alerts";
+            URL url = new URL(endpoint);
+
+            connection = connectionProvider.openConnection(url);
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setDoInput(true);
+            connection.setDoOutput(true);
+
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            connection.setRequestProperty("apikey", anonKey);
+            connection.setRequestProperty("Authorization", "Bearer " + anonKey);
+            connection.setRequestProperty("Prefer", "return=representation");
+            if (gatewayDeviceId != null) {
+                connection.setRequestProperty("x-gateway-device-id", gatewayDeviceId);
+            }
+
+            JSONObject payloadJson = buildDirectRestPayload(message, gatewayDeviceId);
+            byte[] bodyBytes = payloadJson.toString().getBytes(StandardCharsets.UTF_8);
+
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(bodyBytes);
+                os.flush();
+            }
+
+            int responseCode = connection.getResponseCode();
+            String responseBody = readStream(responseCode >= 200 && responseCode < 400
+                    ? connection.getInputStream()
+                    : connection.getErrorStream());
+
+            if (responseCode == 201 || responseCode == 200) {
+                String backendRef = message.getMessageId();
+                try {
+                    if (responseBody.startsWith("[")) {
+                        JSONArray arr = new JSONArray(responseBody);
+                        if (arr.length() > 0) {
+                            JSONObject obj = arr.getJSONObject(0);
+                            backendRef = obj.optString("id", obj.optString("message_id", message.getMessageId()));
+                        }
+                    } else if (responseBody.startsWith("{")) {
+                        JSONObject obj = new JSONObject(responseBody);
+                        backendRef = obj.optString("id", obj.optString("message_id", message.getMessageId()));
+                    }
+                } catch (Exception ignored) {}
+                return UploadResult.success(responseCode, "ACCEPTED", backendRef, responseBody);
+            } else if (responseCode == 409 || (responseBody != null && (responseBody.contains("23505") || responseBody.contains("duplicate key")))) {
+                return UploadResult.duplicateAccepted(responseCode, message.getMessageId(), responseBody);
+            } else if (responseCode == 400) {
+                String error = "VALIDATION_FAILED";
+                String msg = responseBody;
+                try {
+                    JSONObject respJson = new JSONObject(responseBody);
+                    error = respJson.optString("code", error);
+                    msg = respJson.optString("message", msg);
+                } catch (Exception ignored) {}
+                return UploadResult.rejected(responseCode, error, msg);
+            } else {
+                return UploadResult.serverError(responseCode, "HTTP " + responseCode + ": " + responseBody);
+            }
+        } catch (IOException e) {
+            return UploadResult.networkError(e.getMessage() != null ? e.getMessage() : "Network error occurred");
+        } catch (Exception e) {
+            return UploadResult.serverError(500, e.getMessage() != null ? e.getMessage() : "Unexpected error");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Builds the JSON payload conforming strictly to the PostgREST schema for public.emergency_alerts.
+     */
+    @NonNull
+    public JSONObject buildDirectRestPayload(@NonNull EmergencyMessage message, @Nullable String gatewayDeviceId) throws JSONException {
+        JSONObject json = new JSONObject();
+        json.put("message_id", message.getMessageId());
+        json.put("original_sender_device_id", message.getSenderDeviceId() != null ? message.getSenderDeviceId() : "UNKNOWN_DEV");
+        json.put("gateway_device_id", gatewayDeviceId != null ? gatewayDeviceId : "GATEWAY-UNKNOWN");
+        json.put("category", message.getEmergencyCategory() != null ? message.getEmergencyCategory().trim() : Constants.CATEGORY_OTHER);
+        json.put("description", message.getDescription() != null ? message.getDescription().trim() : "Emergency distress call");
+        json.put("priority", message.getPriority() != null ? message.getPriority().trim().toUpperCase() : Constants.PRIORITY_MODERATE);
+
+        if (message.getLatitude() != null) {
+            json.put("latitude", message.getLatitude());
+        }
+        if (message.getLongitude() != null) {
+            json.put("longitude", message.getLongitude());
+        }
+        if (message.getLocationAccuracy() != null) {
+            json.put("accuracy_meters", message.getLocationAccuracy());
+        }
+        if (message.getLocationTimestamp() != null) {
+            json.put("location_timestamp", Instant.ofEpochMilli(message.getLocationTimestamp()).toString());
+        }
+
+        long createdAt = message.getCreatedAt() != null ? message.getCreatedAt() : System.currentTimeMillis();
+        long expiresAt = message.getExpiresAt() != null ? message.getExpiresAt() : (createdAt + Constants.PACKET_TTL_MILLIS);
+        if (expiresAt < createdAt) {
+            expiresAt = createdAt + Constants.PACKET_TTL_MILLIS;
+        }
+
+        json.put("created_at", Instant.ofEpochMilli(createdAt).toString());
+        json.put("expires_at", Instant.ofEpochMilli(expiresAt).toString());
+        json.put("received_at", Instant.ofEpochMilli(System.currentTimeMillis()).toString());
+        json.put("hop_count", Math.min(Math.max(message.getHopCount(), 0), Constants.MAX_MESH_HOPS));
+        json.put("ingestion_status", "ACCEPTED");
+        json.put("operator_status", "NEW");
+        json.put("protocol_version", Constants.PROTOCOL_VERSION);
+        json.put("payload_hash", computePayloadHash(message));
+
+        return json;
+    }
+
+    /**
+     * Checks health directly against PostgREST when Edge Function health endpoint is not found.
+     */
+    @NonNull
+    public HealthResult checkDirectRestHealth() {
+        HttpURLConnection connection = null;
+        try {
+            String endpoint = normalizeUrl(baseUrl) + "/rest/v1/emergency_alerts?select=message_id&limit=1";
+            URL url = new URL(endpoint);
+
+            connection = connectionProvider.openConnection(url);
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setDoInput(true);
+
+            connection.setRequestProperty("apikey", anonKey);
+            connection.setRequestProperty("Authorization", "Bearer " + anonKey);
+
+            int responseCode = connection.getResponseCode();
+            String body = readStream(responseCode >= 200 && responseCode < 400
+                    ? connection.getInputStream()
+                    : connection.getErrorStream());
+
+            if (responseCode == 200) {
+                return new HealthResult(true, responseCode, body, null);
+            } else {
+                return new HealthResult(false, responseCode, body, "HTTP " + responseCode);
+            }
+        } catch (Exception e) {
+            return new HealthResult(false, 0, null, e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    public static String computePayloadHash(@NonNull EmergencyMessage message) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            String data = (message.getMessageId() != null ? message.getMessageId() : "") + "|"
+                    + (message.getSenderDeviceId() != null ? message.getSenderDeviceId() : "") + "|"
+                    + (message.getCreatedAt() != null ? message.getCreatedAt() : 0L) + "|"
+                    + (message.getDescription() != null ? message.getDescription() : "");
+            byte[] hash = md.digest(data.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         }
     }
 

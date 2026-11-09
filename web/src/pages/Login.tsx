@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Radio, Shield, Lock, Mail, AlertTriangle, KeyRound } from 'lucide-react';
+import { Shield, Lock, Mail, AlertTriangle, KeyRound } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
 export const Login: React.FC = () => {
@@ -53,9 +53,11 @@ export const Login: React.FC = () => {
       <div className="w-full max-w-md bg-operations-surface border border-operations-border rounded-lg shadow-2xl p-6 sm:p-8 relative z-10">
         {/* Header Branding */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-14 h-14 rounded-full bg-operations-card border border-operations-red/40 flex items-center justify-center text-operations-red mb-3 shadow-lg shadow-operations-red/20">
-            <Radio className="w-7 h-7 text-operations-red animate-pulse" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="BLACKOUT"
+            className="w-16 h-16 rounded-2xl object-cover mb-3 shadow-lg shadow-cyan-500/20 border border-operations-cyan/40"
+          />
           <h1 className="text-2xl font-black font-mono tracking-widest text-white">
             BLACKOUT
           </h1>
