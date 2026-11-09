@@ -61,6 +61,9 @@ public class RoomMigrationTest {
 
         assertEquals(4, BlackoutDatabase.MIGRATION_4_5.startVersion);
         assertEquals(5, BlackoutDatabase.MIGRATION_4_5.endVersion);
+
+        assertEquals(5, BlackoutDatabase.MIGRATION_5_6.startVersion);
+        assertEquals(6, BlackoutDatabase.MIGRATION_5_6.endVersion);
     }
 
     @Test
@@ -212,14 +215,43 @@ public class RoomMigrationTest {
     }
 
     @Test
+    public void testMigration_5_6_CreatesPeerNodesTableAndIndexes() {
+        executedSqlList.clear();
+        BlackoutDatabase.MIGRATION_5_6.migrate(mockDatabase);
+
+        assertFalse("Migration 5->6 must execute SQL statements", executedSqlList.isEmpty());
+
+        boolean hasPeerNodes = false;
+        int indexCount = 0;
+
+        for (String sql : executedSqlList) {
+            String upper = sql.toUpperCase();
+            if (upper.contains("CREATE TABLE") && upper.contains("PEER_NODES")) {
+                hasPeerNodes = true;
+                assertTrue(upper.contains("ENDPOINTID"));
+                assertTrue(upper.contains("CALLSIGN"));
+                assertTrue(upper.contains("ISGATEWAY"));
+                assertTrue(upper.contains("LASTSEEN"));
+            }
+            if (upper.contains("CREATE INDEX")) {
+                indexCount++;
+            }
+        }
+
+        assertTrue("Must create peer_nodes table", hasPeerNodes);
+        assertTrue("Must create index on peer_nodes endpointId", indexCount >= 1);
+    }
+
+    @Test
     public void testFullSequentialUpgradeChain_PreservesSchemaIntegrity() {
         executedSqlList.clear();
 
-        // Simulate full migration chain v1 -> v2 -> v3 -> v4
+        // Simulate full migration chain v1 -> v2 -> v3 -> v4 -> v5 -> v6
         BlackoutDatabase.MIGRATION_1_2.migrate(mockDatabase);
         BlackoutDatabase.MIGRATION_2_3.migrate(mockDatabase);
         BlackoutDatabase.MIGRATION_3_4.migrate(mockDatabase);
         BlackoutDatabase.MIGRATION_4_5.migrate(mockDatabase);
+        BlackoutDatabase.MIGRATION_5_6.migrate(mockDatabase);
 
         List<String> tablesCreated = new ArrayList<>();
         for (String sql : executedSqlList) {
@@ -242,6 +274,7 @@ public class RoomMigrationTest {
         assertTrue("Must create warning_revisions", tablesCreated.contains("WARNING_REVISIONS"));
         assertTrue("Must create emergency_contacts", tablesCreated.contains("EMERGENCY_CONTACTS"));
         assertTrue("Must create user_profiles", tablesCreated.contains("USER_PROFILES"));
+        assertTrue("Must create peer_nodes", tablesCreated.contains("PEER_NODES"));
 
         // Verify none of the migrations execute DROP TABLE or destructive statements
         for (String sql : executedSqlList) {

@@ -25,9 +25,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
                 WarningSyncStateEntity.class,
                 WarningRevocationEntity.class,
                 EmergencyContactEntity.class,
-                UserProfileEntity.class
+                UserProfileEntity.class,
+                PeerNodeEntity.class
         },
-        version = 5,
+        version = 6,
         exportSchema = false
 )
 public abstract class BlackoutDatabase extends RoomDatabase {
@@ -51,6 +52,9 @@ public abstract class BlackoutDatabase extends RoomDatabase {
     // Phase 9.5 DAOs
     public abstract EmergencyContactDao emergencyContactDao();
     public abstract UserProfileDao userProfileDao();
+
+    // Phase 12 DAOs
+    public abstract PeerNodeDao peerNodeDao();
 
     /**
      * Migration from Version 1 to Version 2:
@@ -266,6 +270,32 @@ public abstract class BlackoutDatabase extends RoomDatabase {
         }
     };
 
+    /**
+     * Migration from Version 5 to Version 6:
+     * Adds Phase 12 peer node metadata, session state, and gateway readiness cache.
+     * Preserves all existing SOS alerts, user profiles, emergency contacts, and public warnings.
+     */
+    public static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS peer_nodes ("
+                    + "deviceId TEXT NOT NULL PRIMARY KEY, "
+                    + "callsign TEXT, "
+                    + "endpointId TEXT, "
+                    + "isGateway INTEGER NOT NULL DEFAULT 0, "
+                    + "networkType TEXT, "
+                    + "batteryLevel INTEGER NOT NULL DEFAULT 100, "
+                    + "lastSeen INTEGER NOT NULL, "
+                    + "trustScore INTEGER NOT NULL DEFAULT 100, "
+                    + "publicKey TEXT, "
+                    + "handshakeStatus TEXT NOT NULL DEFAULT 'UNVERIFIED')");
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_peer_nodes_endpointId ON peer_nodes (endpointId)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_peer_nodes_isGateway ON peer_nodes (isGateway)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_peer_nodes_lastSeen ON peer_nodes (lastSeen)");
+        }
+    };
+
     public static synchronized BlackoutDatabase getInstance(Context context) {
         if (instance == null) {
             instance = Room.databaseBuilder(
@@ -273,7 +303,7 @@ public abstract class BlackoutDatabase extends RoomDatabase {
                     BlackoutDatabase.class,
                     DATABASE_NAME
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .build();
         }
         return instance;

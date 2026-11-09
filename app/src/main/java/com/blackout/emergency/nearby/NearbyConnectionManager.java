@@ -9,9 +9,11 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+
 import com.blackout.emergency.models.EmergencyMessage;
 import com.blackout.emergency.utils.Constants;
 import com.google.android.gms.nearby.Nearby;
@@ -28,19 +30,21 @@ import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Core manager for Google's Nearby Connections API (P2P_CLUSTER strategy).
- * Handles advertising, discovery, connection negotiation with explicit user
- * approval,
- * disconnection management, and raw byte payload transfers.
+ * Handles advertising, discovery, connection negotiation with explicit user approval
+ * or autonomous peering (Phase 12), disconnection management, and raw byte payload transfers.
  */
 public class NearbyConnectionManager {
 
@@ -66,6 +70,28 @@ public class NearbyConnectionManager {
         void onError(@NonNull String errorMessage);
     }
 
+    /**
+     * Empty-body adapter class for {@link NearbyEventListener} allowing observers
+     * to selectively override only the callbacks they care about.
+     */
+    public static class SimpleNearbyEventListener implements NearbyEventListener {
+        @Override public void onAdvertisingStateChanged(boolean isAdvertising) {}
+        @Override public void onDiscoveryStateChanged(boolean isDiscovering) {}
+        @Override public void onEndpointDiscovered(@NonNull NearbyDevice device) {}
+        @Override public void onEndpointLost(@NonNull String endpointId) {}
+        @Override public void onConnectionInitiated(@NonNull NearbyDevice device, @NonNull String authDigits) {}
+        @Override public void onConnectionResult(@NonNull String endpointId, boolean isConnected, @NonNull String message) {}
+        @Override public void onDisconnected(@NonNull String endpointId) {}
+        @Override public void onPayloadReceived(@NonNull String endpointId, @NonNull byte[] payloadBytes) {}
+        @Override public void onPayloadTransferUpdate(@NonNull String endpointId, long payloadId, int status) {}
+        @Override public void onError(@NonNull String errorMessage) {}
+    }
+
+    @FunctionalInterface
+    private interface ListenerAction {
+        void run(@NonNull NearbyEventListener listener);
+    }
+
     private static volatile NearbyConnectionManager instance;
     private final Context context;
     private final ConnectionsClient connectionsClient;
@@ -74,13 +100,18 @@ public class NearbyConnectionManager {
 
     private boolean isAdvertising = false;
     private boolean isDiscovering = false;
+    private boolean isAutonomousMode = true; // Phase 12 BitChat Autonomous Mode
     private String localDeviceId;
     private String localCallsign;
 
     // Discovered and connected endpoints
     private final Map<String, NearbyDevice> discoveredEndpoints = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<String, NearbyDevice> connectedEndpoints = Collections.synchronizedMap(new LinkedHashMap<>());
-    private NearbyEventListener listener;
+    private final Map<String, Long> endpointCooldowns = Collections.synchronizedMap(new LinkedHashMap<>());
+
+    // Multi-listener support
+    private final Set<NearbyEventListener> listeners = Collections.synchronizedSet(new HashSet<>());
+    private NearbyEventListener legacyListener;
 
     private NearbyConnectionManager(Context context) {
         this.context = context.getApplicationContext();
@@ -121,7 +152,35 @@ public class NearbyConnectionManager {
     }
 
     public void setListener(NearbyEventListener listener) {
-        this.listener = listener;
+        if (this.legacyListener != null) {
+            listeners.remove(this.legacyListener);
+        }
+        this.legacyListener = listener;
+        if (listener != null) {
+            listeners.add(listener);
+        }
+    }
+
+    public void registerListener(@NonNull NearbyEventListener listener) {
+        listeners.add(listener);
+    }
+
+    public void unregisterListener(@NonNull NearbyEventListener listener) {
+        listeners.remove(listener);
+    }
+
+    private void notifyListeners(@NonNull ListenerAction action) {
+        mainHandler.post(() -> {
+            synchronized (listeners) {
+                for (NearbyEventListener l : listeners) {
+                    if (l != null) {
+                        try {
+                            action.run(l);
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+        });
     }
 
     public boolean isAdvertising() {
@@ -141,6 +200,12 @@ public class NearbyConnectionManager {
     public List<NearbyDevice> getConnectedDevices() {
         synchronized (connectedEndpoints) {
             return new ArrayList<>(connectedEndpoints.values());
+        }
+    }
+
+    public int getConnectedPeersCount() {
+        synchronized (connectedEndpoints) {
+            return connectedEndpoints.size();
         }
     }
 
@@ -173,17 +238,13 @@ public class NearbyConnectionManager {
                 connectionLifecycleCallback,
                 options).addOnSuccessListener(unused -> {
                     isAdvertising = true;
-                    if (listener != null) {
-                        mainHandler.post(() -> listener.onAdvertisingStateChanged(true));
-                    }
+                    notifyListeners(l -> l.onAdvertisingStateChanged(true));
                 }).addOnFailureListener(e -> {
                     isAdvertising = false;
-                    if (listener != null) {
-                        mainHandler.post(() -> {
-                            listener.onAdvertisingStateChanged(false);
-                            listener.onError("Advertising failed: " + e.getMessage());
-                        });
-                    }
+                    notifyListeners(l -> {
+                        l.onAdvertisingStateChanged(false);
+                        l.onError("Advertising failed: " + e.getMessage());
+                    });
                 });
     }
 
@@ -196,9 +257,7 @@ public class NearbyConnectionManager {
         } catch (Exception ignored) {
         }
         isAdvertising = false;
-        if (listener != null) {
-            mainHandler.post(() -> listener.onAdvertisingStateChanged(false));
-        }
+        notifyListeners(l -> l.onAdvertisingStateChanged(false));
     }
 
     // =========================================================================
@@ -220,17 +279,13 @@ public class NearbyConnectionManager {
                 options).addOnSuccessListener(unused -> {
                     isDiscovering = true;
                     discoveredEndpoints.clear();
-                    if (listener != null) {
-                        mainHandler.post(() -> listener.onDiscoveryStateChanged(true));
-                    }
+                    notifyListeners(l -> l.onDiscoveryStateChanged(true));
                 }).addOnFailureListener(e -> {
                     isDiscovering = false;
-                    if (listener != null) {
-                        mainHandler.post(() -> {
-                            listener.onDiscoveryStateChanged(false);
-                            listener.onError("Discovery failed: " + e.getMessage());
-                        });
-                    }
+                    notifyListeners(l -> {
+                        l.onDiscoveryStateChanged(false);
+                        l.onError("Discovery failed: " + e.getMessage());
+                    });
                 });
     }
 
@@ -243,9 +298,7 @@ public class NearbyConnectionManager {
         } catch (Exception ignored) {
         }
         isDiscovering = false;
-        if (listener != null) {
-            mainHandler.post(() -> listener.onDiscoveryStateChanged(false));
-        }
+        notifyListeners(l -> l.onDiscoveryStateChanged(false));
     }
 
     // =========================================================================
@@ -264,28 +317,21 @@ public class NearbyConnectionManager {
                         device.setState(NearbyDevice.ConnectionState.CONNECTING);
                     }
                 }).addOnFailureListener(e -> {
-                    if (listener != null) {
-                        mainHandler.post(
-                                () -> listener.onError("Connection request failed to " + name + ": " + e.getMessage()));
-                    }
+                    notifyListeners(l -> l.onError("Connection request failed to " + name + ": " + e.getMessage()));
                 });
     }
 
     public void acceptConnection(@NonNull final String endpointId) {
         connectionsClient.acceptConnection(endpointId, payloadCallback)
                 .addOnFailureListener(e -> {
-                    if (listener != null) {
-                        mainHandler.post(() -> listener.onError("Failed to accept connection: " + e.getMessage()));
-                    }
+                    notifyListeners(l -> l.onError("Failed to accept connection: " + e.getMessage()));
                 });
     }
 
     public void rejectConnection(@NonNull final String endpointId) {
         connectionsClient.rejectConnection(endpointId)
                 .addOnFailureListener(e -> {
-                    if (listener != null) {
-                        mainHandler.post(() -> listener.onError("Failed to reject connection: " + e.getMessage()));
-                    }
+                    notifyListeners(l -> l.onError("Failed to reject connection: " + e.getMessage()));
                 });
         NearbyDevice dev = discoveredEndpoints.get(endpointId);
         if (dev != null) {
@@ -303,9 +349,7 @@ public class NearbyConnectionManager {
         if (dev != null) {
             dev.setState(NearbyDevice.ConnectionState.DISCONNECTED);
         }
-        if (listener != null) {
-            mainHandler.post(() -> listener.onDisconnected(endpointId));
-        }
+        notifyListeners(l -> l.onDisconnected(endpointId));
     }
 
     public void stopAll() {
@@ -317,6 +361,63 @@ public class NearbyConnectionManager {
         }
         discoveredEndpoints.clear();
         connectedEndpoints.clear();
+    }
+
+    public boolean isAutonomousMode() {
+        return isAutonomousMode;
+    }
+
+    public void setAutonomousMode(boolean autonomous) {
+        this.isAutonomousMode = autonomous;
+    }
+
+    public void startAutonomousMesh() {
+        this.isAutonomousMode = true;
+        if (hasRequiredPermissions(context) && isBluetoothEnabled()) {
+            startAdvertising();
+            startDiscovery();
+        }
+    }
+
+    public void stopAutonomousMesh() {
+        this.isAutonomousMode = false;
+        stopAll();
+    }
+
+    public void broadcastToAllConnectedPeers(@NonNull byte[] bytes) {
+        synchronized (connectedEndpoints) {
+            for (String endpointId : connectedEndpoints.keySet()) {
+                sendRawPayload(endpointId, bytes, null);
+            }
+        }
+    }
+
+    public void broadcastToGateways(@NonNull byte[] bytes) {
+        synchronized (connectedEndpoints) {
+            for (Map.Entry<String, NearbyDevice> entry : connectedEndpoints.entrySet()) {
+                if (entry.getValue().isGateway()) {
+                    sendRawPayload(entry.getKey(), bytes, null);
+                }
+            }
+        }
+    }
+
+    public void updatePeerGatewayCapability(@NonNull String endpointId, boolean isGateway,
+                                            @NonNull String networkType, int batteryPct, int pendingUploadCount) {
+        NearbyDevice dev = connectedEndpoints.get(endpointId);
+        if (dev != null) {
+            dev.setGateway(isGateway);
+            dev.setNetworkType(networkType);
+            dev.setBatteryPct(batteryPct);
+            dev.setPendingUploadCount(pendingUploadCount);
+        }
+        NearbyDevice disc = discoveredEndpoints.get(endpointId);
+        if (disc != null) {
+            disc.setGateway(isGateway);
+            disc.setNetworkType(networkType);
+            disc.setBatteryPct(batteryPct);
+            disc.setPendingUploadCount(pendingUploadCount);
+        }
     }
 
     // =========================================================================
@@ -379,17 +480,27 @@ public class NearbyConnectionManager {
             NearbyDevice device = new NearbyDevice(endpointId, info.getEndpointName());
             device.setState(NearbyDevice.ConnectionState.DISCOVERED);
             discoveredEndpoints.put(endpointId, device);
-            if (listener != null) {
-                mainHandler.post(() -> listener.onEndpointDiscovered(device));
+            notifyListeners(l -> l.onEndpointDiscovered(device));
+
+            // Phase 12 BitChat Autonomous Peering: Deterministic tie-breaker
+            if (isAutonomousMode && !connectedEndpoints.containsKey(endpointId)
+                    && connectedEndpoints.size() < Constants.MAX_SIMULTANEOUS_PEERS) {
+                long lastAttempt = endpointCooldowns.getOrDefault(endpointId, 0L);
+                long now = System.currentTimeMillis();
+                if (now - lastAttempt > Constants.PEER_CONNECTION_COOLDOWN_MS) {
+                    endpointCooldowns.put(endpointId, now);
+                    String remoteName = info.getEndpointName() != null ? info.getEndpointName() : endpointId;
+                    if (localCallsign.compareTo(remoteName) > 0) {
+                        requestConnection(endpointId);
+                    }
+                }
             }
         }
 
         @Override
         public void onEndpointLost(@NonNull String endpointId) {
             discoveredEndpoints.remove(endpointId);
-            if (listener != null) {
-                mainHandler.post(() -> listener.onEndpointLost(endpointId));
-            }
+            notifyListeners(l -> l.onEndpointLost(endpointId));
         }
     };
 
@@ -412,8 +523,11 @@ public class NearbyConnectionManager {
             final NearbyDevice finalDev = device;
             final String authDigits = connectionInfo.getAuthenticationDigits();
 
-            if (listener != null) {
-                mainHandler.post(() -> listener.onConnectionInitiated(finalDev, authDigits));
+            notifyListeners(l -> l.onConnectionInitiated(finalDev, authDigits));
+
+            // Phase 12: Automatically accept connections in autonomous mesh mode
+            if (isAutonomousMode) {
+                acceptConnection(endpointId);
             }
         }
 
@@ -430,14 +544,18 @@ public class NearbyConnectionManager {
                     connectedEndpoints.put(endpointId, device);
                 }
                 final String msg = "Connected to " + device.getEndpointName();
-                if (listener != null) {
-                    mainHandler.post(() -> listener.onConnectionResult(endpointId, true, msg));
-                }
+                notifyListeners(l -> l.onConnectionResult(endpointId, true, msg));
+
+                // Phase 12: Trigger autonomous store-and-forward and capability exchange
+                try {
+                    com.blackout.emergency.relay.RelayEngine.getInstance(context).onPeerConnected(endpointId);
+                } catch (Exception ignored) {}
             } else {
                 if (device != null) {
                     device.setState(NearbyDevice.ConnectionState.DISCONNECTED);
                 }
                 connectedEndpoints.remove(endpointId);
+                endpointCooldowns.put(endpointId, System.currentTimeMillis());
                 String reason;
                 switch (resolution.getStatus().getStatusCode()) {
                     case ConnectionsStatusCodes.STATUS_CONNECTION_REJECTED:
@@ -451,22 +569,22 @@ public class NearbyConnectionManager {
                         break;
                 }
                 final String finalReason = reason;
-                if (listener != null) {
-                    mainHandler.post(() -> listener.onConnectionResult(endpointId, false, finalReason));
-                }
+                notifyListeners(l -> l.onConnectionResult(endpointId, false, finalReason));
             }
         }
 
         @Override
         public void onDisconnected(@NonNull String endpointId) {
             connectedEndpoints.remove(endpointId);
+            endpointCooldowns.put(endpointId, System.currentTimeMillis());
             NearbyDevice device = discoveredEndpoints.get(endpointId);
             if (device != null) {
                 device.setState(NearbyDevice.ConnectionState.DISCONNECTED);
             }
-            if (listener != null) {
-                mainHandler.post(() -> listener.onDisconnected(endpointId));
-            }
+            notifyListeners(l -> l.onDisconnected(endpointId));
+            try {
+                com.blackout.emergency.relay.RelayEngine.getInstance(context).onPeerDisconnected(endpointId);
+            } catch (Exception ignored) {}
         }
     };
 
@@ -475,21 +593,22 @@ public class NearbyConnectionManager {
         public void onPayloadReceived(@NonNull String endpointId, @NonNull Payload payload) {
             if (payload.getType() == Payload.Type.BYTES) {
                 byte[] bytes = payload.asBytes();
-                if (bytes != null && bytes.length > 0 && bytes.length <= Constants.MAX_PAYLOAD_SIZE_BYTES
-                        && listener != null) {
-                    mainHandler.post(() -> listener.onPayloadReceived(endpointId, bytes));
+                if (bytes != null && bytes.length > 0 && bytes.length <= Constants.MAX_PAYLOAD_SIZE_BYTES) {
+                    notifyListeners(l -> l.onPayloadReceived(endpointId, bytes));
+                    // Phase 12: Deliver directly to RelayEngine
+                    try {
+                        com.blackout.emergency.relay.RelayEngine.getInstance(context).handleIncomingPayload(endpointId, bytes);
+                    } catch (Exception ignored) {}
                 }
             }
         }
 
         @Override
         public void onPayloadTransferUpdate(@NonNull String endpointId, @NonNull PayloadTransferUpdate update) {
-            if (listener != null) {
-                mainHandler.post(() -> listener.onPayloadTransferUpdate(
-                        endpointId,
-                        update.getPayloadId(),
-                        update.getStatus()));
-            }
+            notifyListeners(l -> l.onPayloadTransferUpdate(
+                    endpointId,
+                    update.getPayloadId(),
+                    update.getStatus()));
         }
     };
 

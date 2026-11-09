@@ -41,12 +41,26 @@ public final class Constants {
     public static final String NEARBY_SERVICE_ID = "com.blackout.emergency.nearby.SERVICE_ID";
     public static final int PROTOCOL_VERSION = 1;
 
-    // Message Types (Phase 4 Protocol)
+    // Message Types (Phase 4 & Phase 12 Protocol)
     public static final String MESSAGE_TYPE_SOS = "SOS";
     public static final String MESSAGE_TYPE_INVENTORY = "MESSAGE_INVENTORY";
     public static final String MESSAGE_TYPE_DELIVERY_ACK = "DELIVERY_ACK";
     public static final String MESSAGE_TYPE_DELIVERY_REJECTED = "DELIVERY_REJECTED";
     public static final String MESSAGE_TYPE_RELAY_STATUS = "RELAY_STATUS";
+    public static final String MESSAGE_TYPE_GATEWAY_CAPABILITY = "GATEWAY_CAPABILITY";
+    public static final String MESSAGE_TYPE_PEER_HANDSHAKE = "PEER_HANDSHAKE";
+    public static final String MESSAGE_TYPE_PEER_HANDSHAKE_ACK = "PEER_HANDSHAKE_ACK";
+    public static final String MESSAGE_TYPE_TRANSFER_REQUEST = "TRANSFER_REQUEST";
+
+    // Phase 12 Autonomous Mesh & Notification Constants
+    public static final String NOTIFICATION_CHANNEL_MESH = "blackout_mesh_channel";
+    public static final int NOTIFICATION_ID_MESH = 2001;
+    public static final int MAX_SIMULTANEOUS_PEERS = 4;
+    public static final long DISCOVERY_FOREGROUND_ACTIVE_MS = 30000L;
+    public static final long DISCOVERY_FOREGROUND_PAUSE_MS = 5000L;
+    public static final long DISCOVERY_BACKGROUND_ACTIVE_MS = 15000L;
+    public static final long DISCOVERY_BACKGROUND_PAUSE_MS = 45000L;
+    public static final long PEER_CONNECTION_COOLDOWN_MS = 10000L;
 
     // Phase 7 Warning Relay Message Types
     public static final String MESSAGE_TYPE_WARNING_INVENTORY = "WARNING_INVENTORY";

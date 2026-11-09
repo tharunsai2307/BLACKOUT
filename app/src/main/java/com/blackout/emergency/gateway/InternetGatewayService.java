@@ -179,6 +179,13 @@ public class InternetGatewayService {
                 com.blackout.emergency.warnings.sync.WarningSyncWorker.enqueueOneTimeSync(context);
             } catch (Exception ignored) {}
         }
+
+        // Phase 12: Broadcast updated gateway capability across mesh peers when internet state changes
+        if (stateChanged && context != null) {
+            try {
+                com.blackout.emergency.relay.RelayEngine.getInstance(context).broadcastGatewayCapability();
+            } catch (Exception ignored) {}
+        }
     }
 
     public void unregisterNetworkCallback() {

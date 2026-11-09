@@ -38,6 +38,12 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Foreground Service Permissions for Autonomous Mesh Networking (Phase 12) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"
+        tools:targetApi="upsidedown_cake" />
+
     <application
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -100,6 +106,13 @@
             android:exported="false"
             android:theme="@style/Theme.BLACKOUT"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- Autonomous Mesh Foreground Service (Phase 12 BitChat Architecture) -->
+        <service
+            android:name=".services.MeshForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
     </application>
 

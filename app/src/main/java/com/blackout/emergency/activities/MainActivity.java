@@ -1,11 +1,20 @@
 package com.blackout.emergency.activities;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+
 import androidx.activity.OnBackPressedCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+
 import com.blackout.emergency.R;
 import com.blackout.emergency.fragments.AlertsFragment;
 import com.blackout.emergency.fragments.HistoryFragment;
@@ -14,15 +23,19 @@ import com.blackout.emergency.fragments.NearbyFragment;
 import com.blackout.emergency.fragments.ProfileFragment;
 import com.blackout.emergency.fragments.SosFragment;
 import com.blackout.emergency.gateway.InternetGatewayService;
+import com.blackout.emergency.nearby.NearbyConnectionManager;
+import com.blackout.emergency.services.MeshForegroundService;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 /**
- * Main Activity: Redesigned 5-tab primary container for the BLACKOUT emergency platform.
+ * Main Activity: Primary container for the BLACKOUT emergency platform.
  * Tabs: Home, SOS, Alerts, History, Profile.
- * Manages fragment lifecycle, tab transitions, back navigation stack, and SOS beacon navigation.
+ * Manages fragment lifecycle, tab transitions, back navigation stack,
+ * Bluetooth readiness checks, and Autonomous Mesh Foreground Service coordination (Phase 12).
  */
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private static final String KEY_CURRENT_TAB = "key_current_selected_tab";
     private static final String TAG_HOME = "tag_home";
     private static final String TAG_SOS = "tag_sos";
@@ -34,6 +47,9 @@ public class MainActivity extends AppCompatActivity {
     private BottomNavigationView bottomNavigationView;
     private int currentTabId = R.id.navigation_home;
 
+    private ActivityResultLauncher<String[]> requestPermissionsLauncher;
+    private ActivityResultLauncher<Intent> requestBluetoothLauncher;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
         // Initialize Internet Gateway Service to monitor connectivity and sync pending alerts
         InternetGatewayService.getInstance(this);
         com.blackout.emergency.warnings.sync.WarningSyncWorker.schedulePeriodicSync(this);
+
+        initActivityResultLaunchers();
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
@@ -73,6 +91,78 @@ public class MainActivity extends AppCompatActivity {
                 switchTab(R.id.navigation_home);
             }
         }
+
+        // Initialize autonomous mesh networking
+        checkPermissionsAndStartMeshService();
+    }
+
+    private void initActivityResultLaunchers() {
+        requestBluetoothLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (NearbyConnectionManager.isBluetoothEnabled()) {
+                        startMeshForegroundService();
+                    } else {
+                        Log.w(TAG, "Bluetooth was not enabled by user; mesh discovery paused");
+                    }
+                });
+
+        requestPermissionsLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestMultiplePermissions(),
+                resultMap -> {
+                    if (NearbyConnectionManager.hasRequiredPermissions(this)) {
+                        checkBluetoothAndStartMeshService();
+                    } else {
+                        Log.w(TAG, "Nearby/Location permissions denied; autonomous mesh cannot start");
+                    }
+                });
+    }
+
+    private void checkPermissionsAndStartMeshService() {
+        if (!NearbyConnectionManager.hasRequiredPermissions(this)) {
+            requestPermissionsLauncher.launch(NearbyConnectionManager.getRequiredPermissions());
+        } else {
+            checkBluetoothAndStartMeshService();
+        }
+    }
+
+    private void checkBluetoothAndStartMeshService() {
+        BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothAdapter bluetoothAdapter = bluetoothManager != null ? bluetoothManager.getAdapter() : null;
+
+        if (bluetoothAdapter == null) {
+            Log.w(TAG, "Bluetooth hardware not detected on this device");
+        } else if (!bluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            requestBluetoothLauncher.launch(enableBtIntent);
+        } else {
+            startMeshForegroundService();
+        }
+    }
+
+    private void startMeshForegroundService() {
+        try {
+            MeshForegroundService.start(this);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start MeshForegroundService", e);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        MeshForegroundService.setAppInForeground(true);
+        if (NearbyConnectionManager.hasRequiredPermissions(this)
+                && NearbyConnectionManager.isBluetoothEnabled()
+                && !MeshForegroundService.isRunning()) {
+            startMeshForegroundService();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        MeshForegroundService.setAppInForeground(false);
     }
 
     @Override

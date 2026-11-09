@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * RecyclerView Adapter for displaying real discovered peer devices from Nearby Connections.
+ * RecyclerView Adapter for displaying real discovered peer devices from Nearby Connections
+ * and indicating autonomous mesh gateway capability (Phase 12).
  */
 public class NearbyDeviceAdapter extends RecyclerView.Adapter<NearbyDeviceAdapter.DeviceViewHolder> {
 
@@ -76,13 +77,25 @@ public class NearbyDeviceAdapter extends RecyclerView.Adapter<NearbyDeviceAdapte
             Context context = itemView.getContext();
 
             tvName.setText(device.getEndpointName());
-            tvEndpoint.setText(String.format("Endpoint ID: %s", device.getEndpointId()));
+            if (device.isGateway()) {
+                String net = device.getNetworkType() != null ? device.getNetworkType() : "Online";
+                tvEndpoint.setText(String.format("Gateway Endpoint: %s • Net: %s", device.getEndpointId(), net));
+            } else {
+                tvEndpoint.setText(String.format("Endpoint ID: %s", device.getEndpointId()));
+            }
 
             switch (device.getState()) {
                 case CONNECTED:
-                    tvStatusBadge.setText("CONNECTED");
-                    tvStatusBadge.setTextColor(ContextCompat.getColor(context, R.color.status_success));
-                    tvStatusBadge.setBackgroundResource(R.drawable.bg_badge_green);
+                    if (device.isGateway()) {
+                        String net = device.getNetworkType() != null ? device.getNetworkType() : "Online";
+                        tvStatusBadge.setText("GATEWAY (" + net.toUpperCase() + ")");
+                        tvStatusBadge.setTextColor(ContextCompat.getColor(context, R.color.teal_accent));
+                        tvStatusBadge.setBackgroundResource(R.drawable.bg_badge_teal);
+                    } else {
+                        tvStatusBadge.setText("CONNECTED");
+                        tvStatusBadge.setTextColor(ContextCompat.getColor(context, R.color.status_success));
+                        tvStatusBadge.setBackgroundResource(R.drawable.bg_badge_green);
+                    }
                     btnConnect.setVisibility(View.GONE);
                     break;
                 case CONNECTING:

@@ -201,7 +201,7 @@ public class NearbyFragment extends Fragment implements NearbyConnectionManager.
         initViews(view);
 
         connectionManager = NearbyConnectionManager.getInstance(requireContext());
-        connectionManager.setListener(this);
+        connectionManager.registerListener(this);
         relayEngine = RelayEngine.getInstance(requireContext());
         relayEngine.addListener(relayEventListener);
 
@@ -570,16 +570,29 @@ public class NearbyFragment extends Fragment implements NearbyConnectionManager.
         boolean isDisc = connectionManager.isDiscovering();
 
         if (connectedPeer != null) {
+            int peerCount = connectionManager.getConnectedPeersCount();
             viewStatusDot.setBackgroundResource(R.drawable.bg_status_dot_active);
-            tvRadioState.setText(String.format(getString(R.string.nearby_radio_state_connected), connectedPeer.getEndpointName()));
+            if (peerCount > 1) {
+                tvRadioState.setText(String.format(Locale.ROOT, "Mesh Active (%d Connected Peers)", peerCount));
+            } else {
+                tvRadioState.setText(String.format(getString(R.string.nearby_radio_state_connected), connectedPeer.getEndpointName()));
+            }
             tvStatusPill.setText(R.string.nearby_badge_connected);
             tvStatusPill.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_success));
             tvStatusPill.setBackgroundResource(R.drawable.bg_badge_green);
             tvDiscoveryDesc.setText(R.string.nearby_connected_card_desc);
 
             cardConnected.setVisibility(View.VISIBLE);
-            tvConnectedName.setText(connectedPeer.getEndpointName());
-            tvConnectedEndpoint.setText(String.format("Endpoint ID: %s • Direct P2P Radio Link", connectedPeer.getEndpointId()));
+            if (peerCount > 1) {
+                tvConnectedName.setText(String.format(Locale.ROOT, "%s (+%d other peers)", connectedPeer.getEndpointName(), peerCount - 1));
+            } else {
+                tvConnectedName.setText(connectedPeer.getEndpointName());
+            }
+            if (connectedPeer.isGateway()) {
+                tvConnectedEndpoint.setText(String.format("Gateway Endpoint: %s • Network: %s", connectedPeer.getEndpointId(), connectedPeer.getNetworkType()));
+            } else {
+                tvConnectedEndpoint.setText(String.format("Endpoint ID: %s • Direct P2P Radio Link", connectedPeer.getEndpointId()));
+            }
 
             cardTransfer.setVisibility(View.VISIBLE);
 
@@ -737,7 +750,7 @@ public class NearbyFragment extends Fragment implements NearbyConnectionManager.
     public void onDestroyView() {
         super.onDestroyView();
         if (connectionManager != null) {
-            connectionManager.setListener(null);
+            connectionManager.unregisterListener(this);
         }
         if (getContext() != null) {
             InternetGatewayService.getInstance(requireContext()).unregisterListener(gatewayConnectivityListener);

@@ -15,6 +15,8 @@ import com.blackout.emergency.auth.SessionManager;
 import com.blackout.emergency.database.EmergencyRepository;
 import com.blackout.emergency.gateway.InternetGatewayService;
 import com.blackout.emergency.models.EmergencyMessage;
+import com.blackout.emergency.nearby.NearbyConnectionManager;
+import com.blackout.emergency.nearby.NearbyDevice;
 import com.blackout.emergency.utils.Constants;
 import com.blackout.emergency.utils.DateTimeUtils;
 import com.google.android.material.button.MaterialButton;
@@ -23,9 +25,9 @@ import java.util.Locale;
 
 /**
  * Home Fragment: Main mission-control dashboard for BLACKOUT.
- * Displays offline connection status, prominent emergency SOS trigger,
- * real-time recent local emergency activity from Room database,
- * and quick-navigation overview cards.
+ * Displays offline connection status, real-time autonomous mesh peer counts,
+ * internet gateway availability, prominent emergency SOS trigger,
+ * and recent local emergency activity from Room database.
  */
 public class HomeFragment extends Fragment {
 
@@ -49,6 +51,29 @@ public class HomeFragment extends Fragment {
         if (!isAdded() || getContext() == null) return;
         updateNetworkStatusUi();
     };
+
+    private final NearbyConnectionManager.NearbyEventListener nearbyEventListener =
+            new NearbyConnectionManager.SimpleNearbyEventListener() {
+                @Override
+                public void onConnectionResult(@NonNull String endpointId, boolean isConnected, @NonNull String message) {
+                    if (isAdded()) updateNetworkStatusUi();
+                }
+
+                @Override
+                public void onDisconnected(@NonNull String endpointId) {
+                    if (isAdded()) updateNetworkStatusUi();
+                }
+
+                @Override
+                public void onDiscoveryStateChanged(boolean isDiscovering) {
+                    if (isAdded()) updateNetworkStatusUi();
+                }
+
+                @Override
+                public void onAdvertisingStateChanged(boolean isAdvertising) {
+                    if (isAdded()) updateNetworkStatusUi();
+                }
+            };
 
     public static HomeFragment newInstance() {
         return new HomeFragment();
@@ -108,13 +133,6 @@ public class HomeFragment extends Fragment {
                 ((MainActivity) getActivity()).selectTab(R.id.navigation_history);
             }
         });
-        if (layoutActivityContent != null) {
-            layoutActivityContent.setOnClickListener(v -> {
-                if (getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).selectTab(R.id.navigation_history);
-                }
-            });
-        }
 
         // Quick Navigation to Alerts Screen
         btnGotoAlerts.setOnClickListener(v -> {
@@ -123,8 +141,9 @@ public class HomeFragment extends Fragment {
             }
         });
 
-        // Register live Internet Gateway connectivity monitoring
+        // Register live Internet Gateway and Mesh connectivity monitoring
         InternetGatewayService.getInstance(requireContext()).registerListener(connectivityListener);
+        NearbyConnectionManager.getInstance(requireContext()).registerListener(nearbyEventListener);
 
         loadRecentActivity();
         updateNetworkStatusUi();
@@ -135,6 +154,7 @@ public class HomeFragment extends Fragment {
         super.onDestroyView();
         if (getContext() != null) {
             InternetGatewayService.getInstance(requireContext()).unregisterListener(connectivityListener);
+            NearbyConnectionManager.getInstance(requireContext()).unregisterListener(nearbyEventListener);
         }
     }
 
@@ -148,12 +168,21 @@ public class HomeFragment extends Fragment {
     private void updateNetworkStatusUi() {
         if (getContext() == null || viewHomeStatusDot == null) return;
 
-        com.blackout.emergency.nearby.NearbyConnectionManager manager =
-                com.blackout.emergency.nearby.NearbyConnectionManager.getInstance(requireContext());
-        com.blackout.emergency.nearby.NearbyDevice connectedPeer = manager.getConnectedDevice();
+        NearbyConnectionManager manager = NearbyConnectionManager.getInstance(requireContext());
+        List<NearbyDevice> connectedPeers = manager.getConnectedDevices();
+        int peerCount = connectedPeers.size();
+        boolean hasGatewayPeer = false;
+        String gatewayNetType = null;
+        for (NearbyDevice dev : connectedPeers) {
+            if (dev.isGateway()) {
+                hasGatewayPeer = true;
+                gatewayNetType = dev.getNetworkType();
+                break;
+            }
+        }
 
         InternetGatewayService gateway = InternetGatewayService.getInstance(requireContext());
-        boolean isGatewayOnline = gateway.isInternetAvailable();
+        boolean isLocalGateway = gateway.isInternetAvailable();
 
         SessionManager sessionManager = SessionManager.getInstance(requireContext());
         if (tvHomeGreeting != null) {
@@ -165,42 +194,47 @@ public class HomeFragment extends Fragment {
             }
         }
 
-        if (connectedPeer != null) {
+        if (peerCount > 0) {
             viewHomeStatusDot.setBackgroundResource(R.drawable.bg_status_dot_active);
-            tvHomeStatusBadge.setText(R.string.nearby_badge_connected);
-            tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_success));
-            tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_green);
-            tvHomeOfflineNotice.setText(String.format("Connected to %s via Nearby P2P Cluster.", connectedPeer.getEndpointName()));
+            if (hasGatewayPeer) {
+                tvHomeStatusBadge.setText("GATEWAY ROUTE ACTIVE");
+                tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.teal_accent));
+                tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_teal);
+                tvHomeOfflineNotice.setText(String.format("Mesh route to Gateway (%s) active via %d peer(s).",
+                        gatewayNetType != null ? gatewayNetType : "Cloud", peerCount));
+            } else if (isLocalGateway) {
+                tvHomeStatusBadge.setText("LOCAL GATEWAY ACTIVE");
+                tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.teal_accent));
+                tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_teal);
+                tvHomeOfflineNotice.setText(String.format("Internet Gateway active (%s) with %d mesh peer(s) bridged.",
+                        gateway.getCurrentNetworkType(), peerCount));
+            } else {
+                tvHomeStatusBadge.setText(R.string.nearby_badge_connected);
+                tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_success));
+                tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_green);
+                tvHomeOfflineNotice.setText(String.format("Connected to %d peer(s) via autonomous mesh.", peerCount));
+            }
 
-            tvHomePeersCount.setText(String.format("1 Active Peer Link (%s)", connectedPeer.getEndpointName()));
-            tvHomePeersSummary.setText("Direct offline wireless link established. Emergency SOS payloads can be exchanged.");
-        } else if (manager.isAdvertising()) {
-            viewHomeStatusDot.setBackgroundResource(R.drawable.bg_status_dot_active);
-            tvHomeStatusBadge.setText(R.string.nearby_badge_advertising);
-            tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.teal_accent));
-            tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_teal);
-            tvHomeOfflineNotice.setText(String.format("Advertising presence as %s...", manager.getLocalCallsign()));
-
-            tvHomePeersCount.setText(R.string.home_peers_count_zero);
-            tvHomePeersSummary.setText("Broadcasting radio presence. Ready for incoming peer connections.");
-        } else if (manager.isDiscovering()) {
-            viewHomeStatusDot.setBackgroundResource(R.drawable.bg_status_dot_active);
-            tvHomeStatusBadge.setText(R.string.nearby_badge_discovering);
-            tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.teal_accent));
-            tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_teal);
-            tvHomeOfflineNotice.setText("Scanning for nearby BLACKOUT nodes...");
-
-            tvHomePeersCount.setText(R.string.home_peers_count_zero);
-            tvHomePeersSummary.setText("Discovery active. Searching for advertising peers within radio range.");
-        } else if (isGatewayOnline) {
+            tvHomePeersCount.setText(String.format(Locale.ROOT, "%d Active Mesh Peer%s", peerCount, peerCount == 1 ? "" : "s"));
+            tvHomePeersSummary.setText("Autonomous store-and-forward mesh active. Emergency alerts synchronizing across hops.");
+        } else if (isLocalGateway) {
             viewHomeStatusDot.setBackgroundResource(R.drawable.bg_status_dot_active);
             tvHomeStatusBadge.setText("GATEWAY ONLINE");
             tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.teal_accent));
             tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_teal);
-            tvHomeOfflineNotice.setText(String.format("Internet Gateway active (%s). Auto-syncing emergency alerts to central cloud backend.", gateway.getCurrentNetworkType()));
+            tvHomeOfflineNotice.setText(String.format("Internet Gateway active (%s). Auto-syncing emergency alerts to cloud backend.", gateway.getCurrentNetworkType()));
 
             tvHomePeersCount.setText(R.string.home_peers_count_zero);
-            tvHomePeersSummary.setText("Connected to central emergency infrastructure. Radio transceivers on standby.");
+            tvHomePeersSummary.setText("Connected to central emergency infrastructure. Mesh radios actively scanning.");
+        } else if (manager.isDiscovering() || manager.isAdvertising()) {
+            viewHomeStatusDot.setBackgroundResource(R.drawable.bg_status_dot_active);
+            tvHomeStatusBadge.setText("MESH SCANNING");
+            tvHomeStatusBadge.setTextColor(ContextCompat.getColor(requireContext(), R.color.teal_accent));
+            tvHomeStatusBadge.setBackgroundResource(R.drawable.bg_badge_teal);
+            tvHomeOfflineNotice.setText(String.format("Autonomous mesh active as %s. Scanning for emergency peers...", manager.getLocalCallsign()));
+
+            tvHomePeersCount.setText(R.string.home_peers_count_zero);
+            tvHomePeersSummary.setText("Radio transceivers discovering peers in range. Automatic store-and-forward enabled.");
         } else {
             viewHomeStatusDot.setBackgroundResource(R.drawable.bg_status_dot_offline);
             tvHomeStatusBadge.setText(R.string.badge_status_idle);
@@ -250,25 +284,26 @@ public class HomeFragment extends Fragment {
                 tvRecentPriority.setBackgroundResource(R.drawable.bg_badge_teal);
             }
 
-            // Category
-            String category = latest.getCategory() != null ? latest.getCategory() : "EMERGENCY";
-            tvRecentCategory.setText(category.toUpperCase(Locale.ROOT));
-
-            // Time
-            tvRecentTime.setText(DateTimeUtils.getRelativeTimeSpan(latest.getTimestamp()));
+            // Category & Time
+            tvRecentCategory.setText(latest.getCategory() != null ? latest.getCategory() : Constants.CATEGORY_OTHER);
+            tvRecentTime.setText(DateTimeUtils.formatRelativeTime(latest.getCreatedAt()));
 
             // Description
-            tvRecentDescription.setText(latest.getDescription());
+            String desc = latest.getDescription();
+            if (desc != null && !desc.trim().isEmpty()) {
+                tvRecentDescription.setText(desc);
+                tvRecentDescription.setVisibility(View.VISIBLE);
+            } else {
+                tvRecentDescription.setVisibility(View.GONE);
+            }
 
             // Location
-            if (latest.hasCoordinates()) {
-                String acc = latest.getLocationAccuracy() != null ? String.format(Locale.getDefault(), " (±%.1fm)", latest.getLocationAccuracy()) : "";
-                tvRecentLocation.setText(String.format(Locale.getDefault(), "Location: %.5f° N, %.5f° E%s",
-                        latest.getLatitude(), latest.getLongitude(), acc));
-                tvRecentLocation.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+            String loc = latest.getLocationDisplayString();
+            if (loc != null && !loc.trim().isEmpty()) {
+                tvRecentLocation.setText(loc);
+                tvRecentLocation.setVisibility(View.VISIBLE);
             } else {
-                tvRecentLocation.setText("Location: Not Available (No GPS Fix)");
-                tvRecentLocation.setTextColor(ContextCompat.getColor(requireContext(), R.color.status_warning));
+                tvRecentLocation.setVisibility(View.GONE);
             }
         }
     }

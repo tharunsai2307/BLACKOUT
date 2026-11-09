@@ -251,6 +251,311 @@ public final class RelayPayloadModels {
         }
     }
 
+    // =========================================================================
+    // 4. Gateway Capability Advertisement Payload (Phase 12 Autonomous Routing)
+    // =========================================================================
+
+    public static class GatewayCapabilityPayload {
+        private final int protocolVersion;
+        private final String senderDeviceId;
+        private final String senderCallsign;
+        private final boolean isInternetAvailable;
+        private final String networkType;
+        private final int batteryPct;
+        private final int pendingUploadCount;
+        private final long timestamp;
+
+        public GatewayCapabilityPayload(String senderDeviceId, String senderCallsign,
+                                       boolean isInternetAvailable, String networkType,
+                                       int batteryPct, int pendingUploadCount) {
+            this(Constants.PROTOCOL_VERSION, senderDeviceId, senderCallsign, isInternetAvailable,
+                    networkType, batteryPct, pendingUploadCount, System.currentTimeMillis());
+        }
+
+        public GatewayCapabilityPayload(int protocolVersion, String senderDeviceId, String senderCallsign,
+                                       boolean isInternetAvailable, String networkType,
+                                       int batteryPct, int pendingUploadCount, long timestamp) {
+            this.protocolVersion = protocolVersion;
+            this.senderDeviceId = senderDeviceId;
+            this.senderCallsign = senderCallsign != null ? senderCallsign : "NODE";
+            this.isInternetAvailable = isInternetAvailable;
+            this.networkType = networkType != null ? networkType : "None";
+            this.batteryPct = batteryPct;
+            this.pendingUploadCount = pendingUploadCount;
+            this.timestamp = timestamp;
+        }
+
+        public int getProtocolVersion() { return protocolVersion; }
+        public String getSenderDeviceId() { return senderDeviceId; }
+        public String getSenderCallsign() { return senderCallsign; }
+        public boolean isInternetAvailable() { return isInternetAvailable; }
+        public String getNetworkType() { return networkType; }
+        public int getBatteryPct() { return batteryPct; }
+        public int getPendingUploadCount() { return pendingUploadCount; }
+        public long getTimestamp() { return timestamp; }
+
+        @NonNull
+        public byte[] toBytes() throws JSONException {
+            JSONObject json = new JSONObject();
+            json.put("protocolVersion", protocolVersion);
+            json.put("messageType", Constants.MESSAGE_TYPE_GATEWAY_CAPABILITY);
+            json.put("senderDeviceId", senderDeviceId);
+            json.put("senderCallsign", senderCallsign);
+            json.put("isInternetAvailable", isInternetAvailable);
+            json.put("networkType", networkType);
+            json.put("batteryPct", batteryPct);
+            json.put("pendingUploadCount", pendingUploadCount);
+            json.put("timestamp", timestamp);
+            return json.toString().getBytes(StandardCharsets.UTF_8);
+        }
+
+        @NonNull
+        public static GatewayCapabilityPayload fromBytes(@Nullable byte[] bytes) throws JSONException, IllegalArgumentException {
+            if (bytes == null || bytes.length == 0) {
+                throw new IllegalArgumentException("Gateway capability payload is empty");
+            }
+            String str = new String(bytes, StandardCharsets.UTF_8);
+            JSONObject json = new JSONObject(str);
+
+            int version = json.optInt("protocolVersion", 1);
+            String type = json.optString("messageType", "");
+            if (!Constants.MESSAGE_TYPE_GATEWAY_CAPABILITY.equals(type)) {
+                throw new IllegalArgumentException("Invalid messageType for gateway capability: " + type);
+            }
+
+            return new GatewayCapabilityPayload(
+                    version,
+                    json.optString("senderDeviceId", "UNKNOWN_DEV"),
+                    json.optString("senderCallsign", "NODE"),
+                    json.optBoolean("isInternetAvailable", false),
+                    json.optString("networkType", "None"),
+                    json.optInt("batteryPct", 100),
+                    json.optInt("pendingUploadCount", 0),
+                    json.optLong("timestamp", System.currentTimeMillis())
+            );
+        }
+    }
+
+    // =========================================================================
+    // 5. Peer Cryptographic Handshake Payload (Noise Protocol-Inspired Session)
+    // =========================================================================
+
+    public static class PeerHandshakePayload {
+        private final int protocolVersion;
+        private final String senderDeviceId;
+        private final String senderCallsign;
+        private final String publicKeyBase64;
+        private final String nonce;
+        private final long timestamp;
+        private final List<String> supportedFeatures;
+
+        public PeerHandshakePayload(String senderDeviceId, String senderCallsign,
+                                    String publicKeyBase64, String nonce, List<String> supportedFeatures) {
+            this(Constants.PROTOCOL_VERSION, senderDeviceId, senderCallsign, publicKeyBase64,
+                    nonce, System.currentTimeMillis(), supportedFeatures);
+        }
+
+        public PeerHandshakePayload(int protocolVersion, String senderDeviceId, String senderCallsign,
+                                    String publicKeyBase64, String nonce, long timestamp,
+                                    List<String> supportedFeatures) {
+            this.protocolVersion = protocolVersion;
+            this.senderDeviceId = senderDeviceId;
+            this.senderCallsign = senderCallsign;
+            this.publicKeyBase64 = publicKeyBase64;
+            this.nonce = nonce;
+            this.timestamp = timestamp;
+            this.supportedFeatures = supportedFeatures != null ? supportedFeatures : new ArrayList<>();
+        }
+
+        public int getProtocolVersion() { return protocolVersion; }
+        public String getSenderDeviceId() { return senderDeviceId; }
+        public String getSenderCallsign() { return senderCallsign; }
+        public String getPublicKeyBase64() { return publicKeyBase64; }
+        public String getNonce() { return nonce; }
+        public long getTimestamp() { return timestamp; }
+        public List<String> getSupportedFeatures() { return supportedFeatures; }
+
+        @NonNull
+        public byte[] toBytes() throws JSONException {
+            JSONObject json = new JSONObject();
+            json.put("protocolVersion", protocolVersion);
+            json.put("messageType", Constants.MESSAGE_TYPE_PEER_HANDSHAKE);
+            json.put("senderDeviceId", senderDeviceId);
+            json.put("senderCallsign", senderCallsign);
+            json.put("publicKeyBase64", publicKeyBase64);
+            json.put("nonce", nonce);
+            json.put("timestamp", timestamp);
+
+            JSONArray features = new JSONArray();
+            for (String f : supportedFeatures) {
+                features.put(f);
+            }
+            json.put("supportedFeatures", features);
+            return json.toString().getBytes(StandardCharsets.UTF_8);
+        }
+
+        @NonNull
+        public static PeerHandshakePayload fromBytes(@Nullable byte[] bytes) throws JSONException, IllegalArgumentException {
+            if (bytes == null || bytes.length == 0) {
+                throw new IllegalArgumentException("Handshake payload is empty");
+            }
+            String str = new String(bytes, StandardCharsets.UTF_8);
+            JSONObject json = new JSONObject(str);
+
+            int version = json.optInt("protocolVersion", 1);
+            String type = json.optString("messageType", "");
+            if (!Constants.MESSAGE_TYPE_PEER_HANDSHAKE.equals(type)) {
+                throw new IllegalArgumentException("Invalid messageType for handshake: " + type);
+            }
+
+            List<String> feats = new ArrayList<>();
+            JSONArray arr = json.optJSONArray("supportedFeatures");
+            if (arr != null) {
+                for (int i = 0; i < arr.length(); i++) {
+                    feats.add(arr.optString(i));
+                }
+            }
+
+            return new PeerHandshakePayload(
+                    version,
+                    json.optString("senderDeviceId", "UNKNOWN_DEV"),
+                    json.optString("senderCallsign", "NODE"),
+                    json.optString("publicKeyBase64", ""),
+                    json.optString("nonce", ""),
+                    json.optLong("timestamp", System.currentTimeMillis()),
+                    feats
+            );
+        }
+    }
+
+    // =========================================================================
+    // 6. Peer Handshake Acknowledgement Payload
+    // =========================================================================
+
+    public static class PeerHandshakeAckPayload {
+        private final int protocolVersion;
+        private final String senderDeviceId;
+        private final String nonce;
+        private final boolean accepted;
+
+        public PeerHandshakeAckPayload(String senderDeviceId, String nonce, boolean accepted) {
+            this(Constants.PROTOCOL_VERSION, senderDeviceId, nonce, accepted);
+        }
+
+        public PeerHandshakeAckPayload(int protocolVersion, String senderDeviceId, String nonce, boolean accepted) {
+            this.protocolVersion = protocolVersion;
+            this.senderDeviceId = senderDeviceId;
+            this.nonce = nonce;
+            this.accepted = accepted;
+        }
+
+        public int getProtocolVersion() { return protocolVersion; }
+        public String getSenderDeviceId() { return senderDeviceId; }
+        public String getNonce() { return nonce; }
+        public boolean isAccepted() { return accepted; }
+
+        @NonNull
+        public byte[] toBytes() throws JSONException {
+            JSONObject json = new JSONObject();
+            json.put("protocolVersion", protocolVersion);
+            json.put("messageType", Constants.MESSAGE_TYPE_PEER_HANDSHAKE_ACK);
+            json.put("senderDeviceId", senderDeviceId);
+            json.put("nonce", nonce);
+            json.put("accepted", accepted);
+            return json.toString().getBytes(StandardCharsets.UTF_8);
+        }
+
+        @NonNull
+        public static PeerHandshakeAckPayload fromBytes(@Nullable byte[] bytes) throws JSONException, IllegalArgumentException {
+            if (bytes == null || bytes.length == 0) {
+                throw new IllegalArgumentException("Handshake ACK payload is empty");
+            }
+            String str = new String(bytes, StandardCharsets.UTF_8);
+            JSONObject json = new JSONObject(str);
+
+            int version = json.optInt("protocolVersion", 1);
+            String type = json.optString("messageType", "");
+            if (!Constants.MESSAGE_TYPE_PEER_HANDSHAKE_ACK.equals(type)) {
+                throw new IllegalArgumentException("Invalid messageType for handshake ACK: " + type);
+            }
+
+            return new PeerHandshakeAckPayload(
+                    version,
+                    json.optString("senderDeviceId", "UNKNOWN_DEV"),
+                    json.optString("nonce", ""),
+                    json.optBoolean("accepted", true)
+            );
+        }
+    }
+
+    // =========================================================================
+    // 7. Explicit Transfer Request Payload
+    // =========================================================================
+
+    public static class TransferRequestPayload {
+        private final int protocolVersion;
+        private final String senderDeviceId;
+        private final List<String> requestedMessageIds;
+
+        public TransferRequestPayload(String senderDeviceId, List<String> requestedMessageIds) {
+            this(Constants.PROTOCOL_VERSION, senderDeviceId, requestedMessageIds);
+        }
+
+        public TransferRequestPayload(int protocolVersion, String senderDeviceId, List<String> requestedMessageIds) {
+            this.protocolVersion = protocolVersion;
+            this.senderDeviceId = senderDeviceId;
+            this.requestedMessageIds = requestedMessageIds != null ? requestedMessageIds : new ArrayList<>();
+        }
+
+        public int getProtocolVersion() { return protocolVersion; }
+        public String getSenderDeviceId() { return senderDeviceId; }
+        public List<String> getRequestedMessageIds() { return requestedMessageIds; }
+
+        @NonNull
+        public byte[] toBytes() throws JSONException {
+            JSONObject json = new JSONObject();
+            json.put("protocolVersion", protocolVersion);
+            json.put("messageType", Constants.MESSAGE_TYPE_TRANSFER_REQUEST);
+            json.put("senderDeviceId", senderDeviceId);
+
+            JSONArray arr = new JSONArray();
+            for (String id : requestedMessageIds) {
+                arr.put(id);
+            }
+            json.put("requestedMessageIds", arr);
+            return json.toString().getBytes(StandardCharsets.UTF_8);
+        }
+
+        @NonNull
+        public static TransferRequestPayload fromBytes(@Nullable byte[] bytes) throws JSONException, IllegalArgumentException {
+            if (bytes == null || bytes.length == 0) {
+                throw new IllegalArgumentException("Transfer request payload is empty");
+            }
+            String str = new String(bytes, StandardCharsets.UTF_8);
+            JSONObject json = new JSONObject(str);
+
+            int version = json.optInt("protocolVersion", 1);
+            String type = json.optString("messageType", "");
+            if (!Constants.MESSAGE_TYPE_TRANSFER_REQUEST.equals(type)) {
+                throw new IllegalArgumentException("Invalid messageType for transfer request: " + type);
+            }
+
+            List<String> ids = new ArrayList<>();
+            JSONArray arr = json.optJSONArray("requestedMessageIds");
+            if (arr != null) {
+                for (int i = 0; i < arr.length(); i++) {
+                    ids.add(arr.optString(i));
+                }
+            }
+
+            return new TransferRequestPayload(
+                    version,
+                    json.optString("senderDeviceId", "UNKNOWN_DEV"),
+                    ids
+            );
+        }
+    }
+
     /**
      * Inspects a raw byte payload to quickly determine its messageType without full parsing.
      * Returns Constants.MESSAGE_TYPE_SOS if unspecified or on error.

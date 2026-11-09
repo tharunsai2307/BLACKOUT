@@ -11,7 +11,12 @@ import com.blackout.emergency.nearby.NearbyConnectionManager;
 import com.blackout.emergency.nearby.NearbyDevice;
 import com.blackout.emergency.nearby.ReceivedMessageHandler;
 import com.blackout.emergency.nearby.SosPayloadSerializer;
+import com.blackout.emergency.database.BlackoutDatabase;
+import com.blackout.emergency.database.PeerNodeEntity;
+import com.blackout.emergency.gateway.InternetGatewayService;
+import com.blackout.emergency.nearby.PeerSecurityManager;
 import com.blackout.emergency.utils.Constants;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -110,6 +115,10 @@ public class RelayEngine {
         // Phase 7: Trigger warning inventory exchange in parallel with SOS inventory
         com.blackout.emergency.warnings.relay.WarningRelayManager.getInstance(context).onPeerConnected(endpointId);
 
+        // Phase 12: Autonomous Gateway Capability Advertisement & Cryptographic Handshake
+        sendGatewayCapability(endpointId);
+        sendPeerHandshake(endpointId);
+
         // 1. Gather our local message inventory and transmit to peer
         queueManager.getLocalInventoryIds(localIds -> {
             try {
@@ -169,6 +178,18 @@ public class RelayEngine {
                 break;
             case Constants.MESSAGE_TYPE_DELIVERY_REJECTED:
                 handleIncomingDeliveryReject(endpointId, payloadBytes);
+                break;
+            case Constants.MESSAGE_TYPE_GATEWAY_CAPABILITY:
+                handleIncomingGatewayCapability(endpointId, payloadBytes);
+                break;
+            case Constants.MESSAGE_TYPE_PEER_HANDSHAKE:
+                handleIncomingPeerHandshake(endpointId, payloadBytes);
+                break;
+            case Constants.MESSAGE_TYPE_PEER_HANDSHAKE_ACK:
+                handleIncomingPeerHandshakeAck(endpointId, payloadBytes);
+                break;
+            case Constants.MESSAGE_TYPE_TRANSFER_REQUEST:
+                handleIncomingTransferRequest(endpointId, payloadBytes);
                 break;
             case Constants.MESSAGE_TYPE_SOS:
             default:
@@ -374,6 +395,180 @@ public class RelayEngine {
         } catch (Exception e) {
             postStatus("Malformed delivery rejection from " + endpointId);
         }
+    }
+
+    // =========================================================================
+    // 5. Phase 12 BitChat Autonomous Capabilities & Routing
+    // =========================================================================
+
+    public void sendGatewayCapability(@NonNull final String endpointId) {
+        boolean isInternet = InternetGatewayService.getInstance(context).isInternetAvailable();
+        String netType = InternetGatewayService.getInstance(context).getCurrentNetworkType();
+        int pendingCount = 0;
+        try {
+            pendingCount = BlackoutDatabase.getInstance(context).pendingUploadDao().getPendingUploadCount();
+        } catch (Exception ignored) {}
+
+        try {
+            RelayPayloadModels.GatewayCapabilityPayload cap = new RelayPayloadModels.GatewayCapabilityPayload(
+                    connectionManager.getLocalDeviceId(),
+                    connectionManager.getLocalCallsign(),
+                    isInternet,
+                    netType,
+                    100,
+                    pendingCount
+            );
+            connectionManager.sendRawPayload(endpointId, cap.toBytes(), null);
+        } catch (Exception e) {
+            postStatus("Failed sending gateway capability to " + endpointId + ": " + e.getMessage());
+        }
+    }
+
+    public void broadcastGatewayCapability() {
+        for (NearbyDevice dev : connectionManager.getConnectedDevices()) {
+            sendGatewayCapability(dev.getEndpointId());
+        }
+    }
+
+    public void sendPeerHandshake(@NonNull final String endpointId) {
+        try {
+            PeerSecurityManager sec = PeerSecurityManager.getInstance(context);
+            RelayPayloadModels.PeerHandshakePayload handshake = new RelayPayloadModels.PeerHandshakePayload(
+                    connectionManager.getLocalDeviceId(),
+                    connectionManager.getLocalCallsign(),
+                    sec.getLocalPublicKey(),
+                    sec.generateNonce(),
+                    Collections.singletonList("AUTONOMOUS_MESH_V2")
+            );
+            connectionManager.sendRawPayload(endpointId, handshake.toBytes(), null);
+        } catch (Exception e) {
+            postStatus("Failed sending handshake to " + endpointId + ": " + e.getMessage());
+        }
+    }
+
+    private void handleIncomingGatewayCapability(@NonNull final String endpointId, @NonNull final byte[] bytes) {
+        try {
+            RelayPayloadModels.GatewayCapabilityPayload cap = RelayPayloadModels.GatewayCapabilityPayload.fromBytes(bytes);
+            connectionManager.updatePeerGatewayCapability(
+                    endpointId,
+                    cap.isInternetAvailable(),
+                    cap.getNetworkType(),
+                    cap.getBatteryPct(),
+                    cap.getPendingUploadCount()
+            );
+
+            // Persist peer node session to Room
+            try {
+                PeerNodeEntity node = new PeerNodeEntity(
+                        cap.getSenderDeviceId(),
+                        cap.getSenderCallsign(),
+                        endpointId,
+                        cap.isInternetAvailable(),
+                        cap.getNetworkType(),
+                        cap.getBatteryPct(),
+                        System.currentTimeMillis(),
+                        100,
+                        null,
+                        "CONNECTED"
+                );
+                new Thread(() -> BlackoutDatabase.getInstance(context).peerNodeDao().insertOrUpdate(node)).start();
+            } catch (Exception ignored) {}
+
+            postStatus("Peer " + cap.getSenderCallsign() + " capability: Gateway=" + cap.isInternetAvailable() + " (" + cap.getNetworkType() + ")");
+
+            // If peer is an internet gateway and local device is not, route pending SOS to this gateway!
+            boolean localHasInternet = InternetGatewayService.getInstance(context).isInternetAvailable();
+            if (cap.isInternetAvailable() && !localHasInternet) {
+                routePendingSosToGateway(endpointId, cap.getSenderDeviceId());
+            }
+        } catch (Exception e) {
+            postStatus("Malformed gateway capability from " + endpointId + ": " + e.getMessage());
+        }
+    }
+
+    private void handleIncomingPeerHandshake(@NonNull final String endpointId, @NonNull final byte[] bytes) {
+        try {
+            RelayPayloadModels.PeerHandshakePayload handshake = RelayPayloadModels.PeerHandshakePayload.fromBytes(bytes);
+            PeerSecurityManager sec = PeerSecurityManager.getInstance(context);
+
+            boolean fresh = sec.validatePacketFreshness(handshake.getNonce(), handshake.getTimestamp());
+            if (!fresh) {
+                postStatus("Rejected handshake from " + endpointId + ": Replay or clock skew detected");
+                return;
+            }
+
+            // Update peer node public key in Room
+            new Thread(() -> {
+                try {
+                    PeerNodeEntity node = BlackoutDatabase.getInstance(context)
+                            .peerNodeDao().getPeer(handshake.getSenderDeviceId());
+                    if (node != null) {
+                        node.setPublicKey(handshake.getPublicKeyBase64());
+                        node.setHandshakeStatus("VERIFIED");
+                        node.setLastSeen(System.currentTimeMillis());
+                        BlackoutDatabase.getInstance(context).peerNodeDao().insertOrUpdate(node);
+                    }
+                } catch (Exception ignored) {}
+            }).start();
+
+            // Send Handshake ACK
+            RelayPayloadModels.PeerHandshakeAckPayload ack = new RelayPayloadModels.PeerHandshakeAckPayload(
+                    connectionManager.getLocalDeviceId(),
+                    handshake.getNonce(),
+                    true
+            );
+            connectionManager.sendRawPayload(endpointId, ack.toBytes(), null);
+            postStatus("Verified cryptographic handshake with " + handshake.getSenderCallsign());
+        } catch (Exception e) {
+            postStatus("Malformed handshake from " + endpointId + ": " + e.getMessage());
+        }
+    }
+
+    private void handleIncomingPeerHandshakeAck(@NonNull final String endpointId, @NonNull final byte[] bytes) {
+        try {
+            RelayPayloadModels.PeerHandshakeAckPayload ack = RelayPayloadModels.PeerHandshakeAckPayload.fromBytes(bytes);
+            if (ack.isAccepted()) {
+                postStatus("Peer " + endpointId + " accepted cryptographic handshake");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void handleIncomingTransferRequest(@NonNull final String endpointId, @NonNull final byte[] bytes) {
+        try {
+            RelayPayloadModels.TransferRequestPayload req = RelayPayloadModels.TransferRequestPayload.fromBytes(bytes);
+            if (req.getRequestedMessageIds().isEmpty()) return;
+
+            repository.getAllMessages(messages -> {
+                List<EmergencyMessage> toSend = new ArrayList<>();
+                for (EmergencyMessage msg : messages) {
+                    if (req.getRequestedMessageIds().contains(msg.getMessageId())) {
+                        toSend.add(msg);
+                    }
+                }
+                if (!toSend.isEmpty()) {
+                    forwardNextMessageInBatch(endpointId, req.getSenderDeviceId(), toSend, 0);
+                }
+            });
+        } catch (Exception e) {
+            postStatus("Malformed transfer request: " + e.getMessage());
+        }
+    }
+
+    public void routePendingSosToGateway(@NonNull final String endpointId, @NonNull final String gatewayDeviceId) {
+        postStatus("Intelligent Routing: Dispatching pending SOS alerts towards Gateway " + gatewayDeviceId);
+        repository.getAllMessages(messages -> {
+            List<EmergencyMessage> pendingForGateway = new ArrayList<>();
+            for (EmergencyMessage msg : messages) {
+                if (Constants.STATUS_LOCAL_SAVED.equals(msg.getStatus())
+                        || Constants.STATUS_RECEIVED.equals(msg.getStatus())
+                        || Constants.STATUS_TRANSFER_FAILED.equals(msg.getStatus())) {
+                    pendingForGateway.add(msg);
+                }
+            }
+            if (!pendingForGateway.isEmpty()) {
+                forwardNextMessageInBatch(endpointId, gatewayDeviceId, pendingForGateway, 0);
+            }
+        });
     }
 
     private void postStatus(@NonNull final String status) {

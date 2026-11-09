@@ -25,6 +25,15 @@ public class NearbyDevice implements Serializable {
     private String authDigits;
     private long lastSeenTimestamp;
 
+    // Phase 12 Gateway & Autonomous Mesh Session State
+    private String deviceId;
+    private boolean isGateway = false;
+    private String networkType = "None";
+    private int batteryPct = 100;
+    private int pendingUploadCount = 0;
+    private String publicKey = null;
+    private boolean handshakeCompleted = false;
+
     public NearbyDevice(@NonNull String endpointId, @Nullable String endpointName) {
         this.endpointId = endpointId;
         this.endpointName = endpointName != null && !endpointName.trim().isEmpty() ? endpointName : "BLACKOUT-NODE";
@@ -76,6 +85,64 @@ public class NearbyDevice implements Serializable {
 
     public boolean isPendingApproval() {
         return state == ConnectionState.REQUESTED_INCOMING || state == ConnectionState.REQUESTED_OUTGOING;
+    }
+
+    @Nullable
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(@Nullable String deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public boolean isGateway() {
+        return isGateway;
+    }
+
+    public void setGateway(boolean gateway) {
+        isGateway = gateway;
+    }
+
+    public String getNetworkType() {
+        return networkType;
+    }
+
+    public void setNetworkType(String networkType) {
+        this.networkType = networkType;
+    }
+
+    public int getBatteryPct() {
+        return batteryPct;
+    }
+
+    public void setBatteryPct(int batteryPct) {
+        this.batteryPct = batteryPct;
+    }
+
+    public int getPendingUploadCount() {
+        return pendingUploadCount;
+    }
+
+    public void setPendingUploadCount(int pendingUploadCount) {
+        this.pendingUploadCount = pendingUploadCount;
+    }
+
+    @Nullable
+    public String getPublicKey() {
+        return publicKey;
+    }
+
+    public void setPublicKey(@Nullable String publicKey) {
+        this.publicKey = publicKey;
+    }
+
+    public boolean isHandshakeCompleted() {
+        return handshakeCompleted;
+    }
+
+    public void setHandshakeCompleted(boolean handshakeCompleted) {
+        this.handshakeCompleted = handshakeCompleted;
     }
 
     @Override
