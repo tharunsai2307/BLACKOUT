@@ -286,17 +286,43 @@ public class BackendApiClientTest {
     }
 
     @Test
-    public void testUploadAlertFallsBackToDirectRestWhenFunctionNotFound() {
-        // When Edge Function returns HTTP 404 (Requested function was not found),
-        // client should fall back to direct PostgREST insert which returns 201 Created.
+    public void testUploadAlertViaRpcSuccess() {
+        final String rpcSuccessJson = "{\"status\":\"SUCCESS\",\"backendReference\":\"alert-rpc-uuid-101\",\"messageId\":\"msg-uuid-101\",\"ingestionStatus\":\"ACCEPTED\"}";
+        client.setConnectionProvider(url -> new FakeHttpURLConnection(200, rpcSuccessJson));
+
+        EmergencyMessage msg = createValidMessage();
+        BackendApiClient.UploadResult result = client.uploadAlertViaRpc(msg, "GATEWAY-01");
+
+        assertTrue("Upload via RPC should succeed", result.isSuccess());
+        assertFalse(result.isDuplicate());
+        assertEquals(200, result.getHttpStatusCode());
+        assertEquals("alert-rpc-uuid-101", result.getBackendReference());
+    }
+
+    @Test
+    public void testUploadAlertViaRpcDuplicateAccepted() {
+        final String rpcDuplicateJson = "{\"status\":\"DUPLICATE_ACCEPTED\",\"backendReference\":\"alert-rpc-dup-102\",\"messageId\":\"msg-uuid-102\"}";
+        client.setConnectionProvider(url -> new FakeHttpURLConnection(200, rpcDuplicateJson));
+
+        EmergencyMessage msg = createValidMessage();
+        BackendApiClient.UploadResult result = client.uploadAlertViaRpc(msg, "GATEWAY-01");
+
+        assertTrue("Duplicate via RPC should be accepted", result.isSuccess());
+        assertTrue(result.isDuplicate());
+        assertEquals(200, result.getHttpStatusCode());
+        assertEquals("alert-rpc-dup-102", result.getBackendReference());
+    }
+
+    @Test
+    public void testUploadAlertCascadesFromEdgeFunctionToRpc() {
         final String notFoundJson = "{\"code\":\"NOT_FOUND\",\"message\":\"Requested function was not found\"}";
-        final String restSuccessJson = "[{\"id\":\"alert-direct-uuid-99\",\"message_id\":\"msg-uuid-99\"}]";
+        final String rpcSuccessJson = "{\"status\":\"SUCCESS\",\"backendReference\":\"alert-rpc-uuid-202\"}";
 
         client.setConnectionProvider(url -> {
             if (url.toString().contains("/functions/v1/")) {
                 return new FakeHttpURLConnection(404, notFoundJson);
-            } else if (url.toString().contains("/rest/v1/")) {
-                return new FakeHttpURLConnection(201, restSuccessJson);
+            } else if (url.toString().contains("/rest/v1/rpc/")) {
+                return new FakeHttpURLConnection(200, rpcSuccessJson);
             }
             return new FakeHttpURLConnection(500, "{}");
         });
@@ -304,10 +330,74 @@ public class BackendApiClientTest {
         EmergencyMessage msg = createValidMessage();
         BackendApiClient.UploadResult result = client.uploadAlert(msg, "GATEWAY-01");
 
-        assertTrue("Upload should succeed via PostgREST fallback", result.isSuccess());
-        assertFalse(result.isDuplicate());
+        assertTrue("Upload should cascade from missing Edge Function to RPC", result.isSuccess());
+        assertEquals(200, result.getHttpStatusCode());
+        assertEquals("alert-rpc-uuid-202", result.getBackendReference());
+    }
+
+    @Test
+    public void testUploadAlertCascadesFromRpcToDirectRestWhenRpcMissing() {
+        final String notFoundJson = "{\"code\":\"NOT_FOUND\",\"message\":\"Requested function was not found\"}";
+        final String rpcNotFoundJson = "{\"code\":\"PGRST202\",\"message\":\"Could not find function public.submit_emergency_alert in schema\"}";
+        final String restSuccessJson = "";
+
+        client.setConnectionProvider(url -> {
+            if (url.toString().contains("/functions/v1/")) {
+                return new FakeHttpURLConnection(404, notFoundJson);
+            } else if (url.toString().contains("/rest/v1/rpc/")) {
+                return new FakeHttpURLConnection(404, rpcNotFoundJson);
+            } else if (url.toString().contains("/rest/v1/emergency_alerts")) {
+                FakeHttpURLConnection conn = new FakeHttpURLConnection(201, restSuccessJson);
+                conn.setHeaderField("Location", "/rest/v1/emergency_alerts?id=eq.alert-direct-uuid-303");
+                return conn;
+            }
+            return new FakeHttpURLConnection(500, "{}");
+        });
+
+        EmergencyMessage msg = createValidMessage();
+        BackendApiClient.UploadResult result = client.uploadAlert(msg, "GATEWAY-01");
+
+        assertTrue("Upload should cascade to direct PostgREST when RPC is not found", result.isSuccess());
         assertEquals(201, result.getHttpStatusCode());
-        assertEquals("alert-direct-uuid-99", result.getBackendReference());
+    }
+
+    @Test
+    public void testUploadAlertRlsViolationYieldsSecurityRejectedNonRetryable() {
+        final String rlsErrorJson = "{\"code\":\"42501\",\"message\":\"new row violates row-level security policy for table emergency_alerts\"}";
+        client.setConnectionProvider(url -> new FakeHttpURLConnection(401, rlsErrorJson));
+
+        EmergencyMessage msg = createValidMessage();
+        BackendApiClient.UploadResult result = client.uploadAlertDirectRest(msg, "GATEWAY-01");
+
+        assertFalse("RLS violation should not be considered success", result.isSuccess());
+        assertFalse("RLS violation should NOT be retryable to avoid infinite loops", result.isRetryable());
+        assertEquals(401, result.getHttpStatusCode());
+        assertEquals(Constants.UPLOAD_STATUS_REJECTED, result.getStatus());
+        assertTrue(result.getErrorMessage().contains("42501"));
+    }
+
+    @Test
+    public void testApplyAuthHeadersUsesCitizenJwtWhenAvailable() throws Exception {
+        client.setAuthTokenProvider(() -> "citizen-test-jwt-token-xyz");
+
+        URL testUrl = new URL("https://test-project.supabase.co/rest/v1/emergency_alerts");
+        FakeHttpURLConnection conn = new FakeHttpURLConnection(200, "{}");
+        client.applyAuthHeaders(conn);
+
+        assertEquals("Bearer citizen-test-jwt-token-xyz", conn.getRequestProperty("Authorization"));
+        assertEquals("test-anon-key", conn.getRequestProperty("apikey"));
+    }
+
+    @Test
+    public void testApplyAuthHeadersFallsBackToAnonKeyWhenNoSession() throws Exception {
+        client.setAuthTokenProvider(() -> null);
+
+        URL testUrl = new URL("https://test-project.supabase.co/rest/v1/emergency_alerts");
+        FakeHttpURLConnection conn = new FakeHttpURLConnection(200, "{}");
+        client.applyAuthHeaders(conn);
+
+        assertEquals("Bearer test-anon-key", conn.getRequestProperty("Authorization"));
+        assertEquals("test-anon-key", conn.getRequestProperty("apikey"));
     }
 
     @Test
@@ -329,11 +419,32 @@ public class BackendApiClientTest {
         private final int responseCode;
         private final String responseBody;
         private final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        private final java.util.Map<String, String> requestProperties = new java.util.HashMap<>();
+        private final java.util.Map<String, String> headerFields = new java.util.HashMap<>();
 
         FakeHttpURLConnection(int responseCode, String responseBody) {
             super(null);
             this.responseCode = responseCode;
             this.responseBody = responseBody;
+        }
+
+        @Override
+        public void setRequestProperty(String key, String value) {
+            requestProperties.put(key, value);
+        }
+
+        @Override
+        public String getRequestProperty(String key) {
+            return requestProperties.get(key);
+        }
+
+        public void setHeaderField(String key, String value) {
+            headerFields.put(key, value);
+        }
+
+        @Override
+        public String getHeaderField(String key) {
+            return headerFields.get(key);
         }
 
         @Override

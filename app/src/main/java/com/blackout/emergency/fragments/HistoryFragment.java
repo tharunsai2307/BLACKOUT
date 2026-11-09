@@ -182,7 +182,8 @@ public class HistoryFragment extends Fragment {
                 sb.append("Backend Ref: ").append(upload.getBackendReference()).append("\n");
             }
             if (upload.getLastErrorCode() != null && !upload.getLastErrorCode().isEmpty()) {
-                sb.append("Last Error: ").append(upload.getLastErrorCode()).append("\n");
+                sb.append("Sync Notice: ").append(formatUserFriendlyError(upload.getLastErrorCode())).append("\n");
+                sb.append("Diagnostics: ").append(upload.getLastErrorCode()).append("\n");
             }
         } else {
             sb.append("Upload Status: NOT QUEUED\n");
@@ -252,5 +253,24 @@ public class HistoryFragment extends Fragment {
                 })
                 .setNegativeButton(R.string.action_cancel, null)
                 .show();
+    }
+
+    private String formatUserFriendlyError(@NonNull String raw) {
+        if (raw.contains("42501") || raw.contains("row-level security") || raw.contains("RLS_VIOLATION")) {
+            return "Security authorization pending. Alert is safely saved locally on this device.";
+        }
+        if (raw.contains("404") || raw.contains("Requested function was not found")) {
+            return "Central upload service endpoint temporarily unreachable.";
+        }
+        if (raw.contains("VALIDATION") || raw.contains("400")) {
+            return "Alert payload rejected by server-side validation rules.";
+        }
+        if (raw.contains("RATE_LIMIT") || raw.contains("429")) {
+            return "Upload rate limit reached. Synchronization will retry automatically.";
+        }
+        if (raw.contains("timeout") || raw.contains("Network") || raw.contains("ConnectException")) {
+            return "Network connection unavailable. Synchronization will resume when connected.";
+        }
+        return "Synchronization issue encountered. Alert is safely saved locally.";
     }
 }

@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
+import com.blackout.emergency.auth.SessionManager;
 import com.blackout.emergency.models.EmergencyMessage;
 import com.blackout.emergency.utils.Constants;
 import java.io.BufferedReader;
@@ -27,7 +28,12 @@ import org.json.JSONObject;
 /**
  * HTTP Client connecting the Android Internet Gateway to the Supabase central backend.
  * Uses native Java HttpURLConnection / HttpsURLConnection with zero third-party dependencies.
- * Sends validated JSON payloads conforming to the protocol specification to the Edge Function.
+ * Sends validated JSON payloads conforming to the protocol specification.
+ *
+ * Implements a resilient 3-tier cloud upload architecture:
+ * 1. Supabase Edge Function (/functions/v1/emergency-alerts)
+ * 2. Secure Server-Side Stored Procedure RPC (/rest/v1/rpc/submit_emergency_alert - SECURITY DEFINER)
+ * 3. Direct PostgREST Table Insert (/rest/v1/emergency_alerts with Prefer: return=minimal)
  */
 public class BackendApiClient {
 
@@ -50,26 +56,45 @@ public class BackendApiClient {
         HttpURLConnection openConnection(URL url) throws IOException;
     }
 
+    public interface AuthTokenProvider {
+        @Nullable String getAccessToken();
+    }
+
     private String baseUrl;
     private String anonKey;
     private HttpConnectionProvider connectionProvider;
+    private AuthTokenProvider tokenProvider;
 
     public BackendApiClient(@NonNull Context context) {
         SharedPreferences prefs = context.getSharedPreferences(Constants.PREFS_NAME, Context.MODE_PRIVATE);
         this.baseUrl = prefs.getString(Constants.PREF_SUPABASE_URL, Constants.DEFAULT_SUPABASE_URL);
         this.anonKey = prefs.getString(Constants.PREF_SUPABASE_ANON_KEY, Constants.DEFAULT_SUPABASE_ANON_KEY);
         this.connectionProvider = url -> (HttpURLConnection) url.openConnection();
+        final Context appContext = context.getApplicationContext();
+        this.tokenProvider = () -> {
+            try {
+                return SessionManager.getInstance(appContext).getAccessToken();
+            } catch (Exception e) {
+                return null;
+            }
+        };
     }
 
     public BackendApiClient(@NonNull String baseUrl, @NonNull String anonKey) {
         this.baseUrl = baseUrl;
         this.anonKey = anonKey;
         this.connectionProvider = url -> (HttpURLConnection) url.openConnection();
+        this.tokenProvider = null;
     }
 
     @VisibleForTesting
     public void setConnectionProvider(HttpConnectionProvider provider) {
         this.connectionProvider = provider;
+    }
+
+    @VisibleForTesting
+    public void setAuthTokenProvider(@Nullable AuthTokenProvider provider) {
+        this.tokenProvider = provider;
     }
 
     public synchronized void configure(@NonNull String baseUrl, @NonNull String anonKey) {
@@ -83,6 +108,17 @@ public class BackendApiClient {
 
     public synchronized String getAnonKey() {
         return anonKey;
+    }
+
+    /**
+     * Applies authentication headers to the outgoing connection.
+     * Uses active citizen session JWT if available; otherwise falls back to anon key for guest distress beacons.
+     */
+    public void applyAuthHeaders(@NonNull HttpURLConnection connection) {
+        String token = tokenProvider != null ? tokenProvider.getAccessToken() : null;
+        String bearer = (token != null && !token.trim().isEmpty()) ? token.trim() : anonKey;
+        connection.setRequestProperty("apikey", anonKey);
+        connection.setRequestProperty("Authorization", "Bearer " + bearer);
     }
 
     /**
@@ -163,7 +199,8 @@ public class BackendApiClient {
     }
 
     /**
-     * Synchronously uploads an emergency alert to the Supabase Edge Function endpoint.
+     * Primary entry point for uploading emergency alerts.
+     * Tries Edge Function first; if not deployed, cascades to secure Stored Procedure RPC, then direct PostgREST.
      */
     @NonNull
     public UploadResult uploadAlert(@NonNull EmergencyMessage message, @Nullable String gatewayDeviceId) {
@@ -189,8 +226,7 @@ public class BackendApiClient {
             connection.setDoOutput(true);
 
             connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            connection.setRequestProperty("apikey", anonKey);
-            connection.setRequestProperty("Authorization", "Bearer " + anonKey);
+            applyAuthHeaders(connection);
             if (gatewayDeviceId != null) {
                 connection.setRequestProperty("x-gateway-device-id", gatewayDeviceId);
             }
@@ -214,7 +250,7 @@ public class BackendApiClient {
                 try {
                     JSONObject respJson = new JSONObject(responseBody);
                     status = respJson.optString("status", "SUCCESS");
-                    backendRef = respJson.optString("backendReference", null);
+                    backendRef = respJson.optString("backendReference", respJson.optString("backend_reference", null));
                 } catch (Exception ignored) {}
 
                 if ("DUPLICATE_ACCEPTED".equalsIgnoreCase(status)) {
@@ -222,9 +258,9 @@ public class BackendApiClient {
                 }
                 return UploadResult.success(responseCode, status, backendRef, responseBody);
             } else if (responseCode == 404 || (responseCode >= 400 && responseBody != null && responseBody.contains("Requested function was not found"))) {
-                // Supabase Edge Function is not deployed to the cloud project.
-                // Seamlessly fall back to direct Supabase PostgREST table insert: /rest/v1/emergency_alerts
-                return uploadAlertDirectRest(message, gatewayDeviceId);
+                // Edge Function is not deployed to the cloud project.
+                // Seamlessly fall back to secure server-side RPC submit_emergency_alert
+                return uploadAlertViaRpc(message, gatewayDeviceId);
             } else if (responseCode == 400) {
                 String error = "VALIDATION_FAILED";
                 String msg = responseBody;
@@ -236,6 +272,177 @@ public class BackendApiClient {
                 return UploadResult.rejected(responseCode, error, msg);
             } else if (responseCode == 409) {
                 return UploadResult.conflict(responseCode, "CONFLICTING_PAYLOAD", responseBody);
+            } else if (responseCode == 401 || responseCode == 403 || (responseBody != null && responseBody.contains("42501"))) {
+                return UploadResult.securityRejected(responseCode, "RLS_VIOLATION", responseBody);
+            } else {
+                return UploadResult.serverError(responseCode, "HTTP " + responseCode + ": " + responseBody);
+            }
+        } catch (IOException e) {
+            return UploadResult.networkError(e.getMessage() != null ? e.getMessage() : "Network error occurred");
+        } catch (Exception e) {
+            return UploadResult.serverError(500, e.getMessage() != null ? e.getMessage() : "Unexpected error");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Submits an emergency alert to the Supabase secure server-side RPC endpoint:
+     * POST /rest/v1/rpc/submit_emergency_alert
+     * Executes SECURITY DEFINER in PostgreSQL with full validation, rate limiting, and idempotency.
+     */
+    @NonNull
+    public UploadResult uploadAlertViaRpc(@NonNull EmergencyMessage message, @Nullable String gatewayDeviceId) {
+        HttpURLConnection connection = null;
+        try {
+            String endpoint = normalizeUrl(baseUrl) + "/rest/v1/rpc/submit_emergency_alert";
+            URL url = new URL(endpoint);
+
+            connection = connectionProvider.openConnection(url);
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setDoInput(true);
+            connection.setDoOutput(true);
+
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            applyAuthHeaders(connection);
+            if (gatewayDeviceId != null) {
+                connection.setRequestProperty("x-gateway-device-id", gatewayDeviceId);
+            }
+
+            JSONObject rpcBody = new JSONObject();
+            rpcBody.put("payload", buildJsonPayload(message, gatewayDeviceId));
+            byte[] bodyBytes = rpcBody.toString().getBytes(StandardCharsets.UTF_8);
+
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(bodyBytes);
+                os.flush();
+            }
+
+            int responseCode = connection.getResponseCode();
+            String responseBody = readStream(responseCode >= 200 && responseCode < 400
+                    ? connection.getInputStream()
+                    : connection.getErrorStream());
+
+            if (responseCode == 200 || responseCode == 201) {
+                String status = "SUCCESS";
+                String backendRef = message.getMessageId();
+                try {
+                    JSONObject respJson = new JSONObject(responseBody);
+                    status = respJson.optString("status", "SUCCESS");
+                    backendRef = respJson.optString("backendReference", respJson.optString("backend_reference", backendRef));
+                } catch (Exception ignored) {}
+
+                if ("DUPLICATE_ACCEPTED".equalsIgnoreCase(status)) {
+                    return UploadResult.duplicateAccepted(responseCode, backendRef, responseBody);
+                }
+                return UploadResult.success(responseCode, status, backendRef, responseBody);
+            } else if (responseCode == 404 || (responseBody != null && (responseBody.contains("submit_emergency_alert") || responseBody.contains("does not exist") || responseBody.contains("NOT_FOUND")))) {
+                // RPC endpoint not found in database; fall back to direct PostgREST insert
+                return uploadAlertDirectRest(message, gatewayDeviceId);
+            } else if (responseCode == 409 || (responseBody != null && (responseBody.contains("23505") || responseBody.contains("duplicate key")))) {
+                return UploadResult.duplicateAccepted(responseCode, message.getMessageId(), responseBody);
+            } else if (responseCode == 400) {
+                String error = "VALIDATION_FAILED";
+                String msg = responseBody;
+                try {
+                    JSONObject respJson = new JSONObject(responseBody);
+                    error = respJson.optString("code", error);
+                    msg = respJson.optString("message", msg);
+                } catch (Exception ignored) {}
+                return UploadResult.rejected(responseCode, error, msg);
+            } else if (responseCode == 401 || responseCode == 403 || (responseBody != null && responseBody.contains("42501"))) {
+                return UploadResult.securityRejected(responseCode, "RLS_VIOLATION", responseBody);
+            } else {
+                return UploadResult.serverError(responseCode, "HTTP " + responseCode + ": " + responseBody);
+            }
+        } catch (IOException e) {
+            return UploadResult.networkError(e.getMessage() != null ? e.getMessage() : "Network error occurred");
+        } catch (Exception e) {
+            return UploadResult.serverError(500, e.getMessage() != null ? e.getMessage() : "Unexpected error");
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Fallback upload mechanism directly inserting into the Supabase 'emergency_alerts' table
+     * via PostgREST (/rest/v1/emergency_alerts) when Edge Functions and RPC are unavailable.
+     * Uses 'Prefer: return=minimal' to prevent PostgreSQL RLS 42501 evaluation on SELECT during insert.
+     */
+    @NonNull
+    public UploadResult uploadAlertDirectRest(@NonNull EmergencyMessage message, @Nullable String gatewayDeviceId) {
+        HttpURLConnection connection = null;
+        try {
+            String endpoint = normalizeUrl(baseUrl) + "/rest/v1/emergency_alerts";
+            URL url = new URL(endpoint);
+
+            connection = connectionProvider.openConnection(url);
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setDoInput(true);
+            connection.setDoOutput(true);
+
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            applyAuthHeaders(connection);
+            connection.setRequestProperty("Prefer", "return=minimal");
+            if (gatewayDeviceId != null) {
+                connection.setRequestProperty("x-gateway-device-id", gatewayDeviceId);
+            }
+
+            JSONObject payloadJson = buildDirectRestPayload(message, gatewayDeviceId);
+            byte[] bodyBytes = payloadJson.toString().getBytes(StandardCharsets.UTF_8);
+
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(bodyBytes);
+                os.flush();
+            }
+
+            int responseCode = connection.getResponseCode();
+            String responseBody = readStream(responseCode >= 200 && responseCode < 400
+                    ? connection.getInputStream()
+                    : connection.getErrorStream());
+
+            if (responseCode == 201 || responseCode == 200) {
+                String backendRef = message.getMessageId();
+                String locationHeader = connection.getHeaderField("Location");
+                if (locationHeader != null && !locationHeader.isEmpty()) {
+                    backendRef = locationHeader;
+                }
+                try {
+                    if (responseBody != null && !responseBody.isEmpty()) {
+                        if (responseBody.startsWith("[")) {
+                            JSONArray arr = new JSONArray(responseBody);
+                            if (arr.length() > 0) {
+                                JSONObject obj = arr.getJSONObject(0);
+                                backendRef = obj.optString("id", obj.optString("message_id", backendRef));
+                            }
+                        } else if (responseBody.startsWith("{")) {
+                            JSONObject obj = new JSONObject(responseBody);
+                            backendRef = obj.optString("id", obj.optString("message_id", backendRef));
+                        }
+                    }
+                } catch (Exception ignored) {}
+                return UploadResult.success(responseCode, "ACCEPTED", backendRef, responseBody);
+            } else if (responseCode == 409 || (responseBody != null && (responseBody.contains("23505") || responseBody.contains("duplicate key")))) {
+                return UploadResult.duplicateAccepted(responseCode, message.getMessageId(), responseBody);
+            } else if (responseCode == 400) {
+                String error = "VALIDATION_FAILED";
+                String msg = responseBody;
+                try {
+                    JSONObject respJson = new JSONObject(responseBody);
+                    error = respJson.optString("code", error);
+                    msg = respJson.optString("message", msg);
+                } catch (Exception ignored) {}
+                return UploadResult.rejected(responseCode, error, msg);
+            } else if (responseCode == 401 || responseCode == 403 || (responseBody != null && responseBody.contains("42501"))) {
+                return UploadResult.securityRejected(responseCode, "RLS_VIOLATION", responseBody);
             } else {
                 return UploadResult.serverError(responseCode, "HTTP " + responseCode + ": " + responseBody);
             }
@@ -266,8 +473,7 @@ public class BackendApiClient {
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setDoInput(true);
 
-            connection.setRequestProperty("apikey", anonKey);
-            connection.setRequestProperty("Authorization", "Bearer " + anonKey);
+            applyAuthHeaders(connection);
 
             int responseCode = connection.getResponseCode();
             String body = readStream(responseCode == 200 ? connection.getInputStream() : connection.getErrorStream());
@@ -275,7 +481,6 @@ public class BackendApiClient {
             if (responseCode == 200) {
                 return new HealthResult(true, responseCode, body, null);
             } else if (responseCode == 404 || (body != null && body.contains("Requested function was not found"))) {
-                // Edge Function health endpoint not found; fallback to direct PostgREST health
                 return checkDirectRestHealth();
             } else {
                 return new HealthResult(false, responseCode, body, "HTTP " + responseCode);
@@ -290,77 +495,35 @@ public class BackendApiClient {
     }
 
     /**
-     * Fallback upload mechanism directly inserting into the Supabase 'emergency_alerts' table
-     * via PostgREST (/rest/v1/emergency_alerts) when Edge Functions are not deployed.
+     * Checks health directly against PostgREST when Edge Function health endpoint is not found.
      */
     @NonNull
-    public UploadResult uploadAlertDirectRest(@NonNull EmergencyMessage message, @Nullable String gatewayDeviceId) {
+    public HealthResult checkDirectRestHealth() {
         HttpURLConnection connection = null;
         try {
-            String endpoint = normalizeUrl(baseUrl) + "/rest/v1/emergency_alerts";
+            String endpoint = normalizeUrl(baseUrl) + "/rest/v1/emergency_alerts?select=message_id&limit=1";
             URL url = new URL(endpoint);
 
             connection = connectionProvider.openConnection(url);
-            connection.setRequestMethod("POST");
+            connection.setRequestMethod("GET");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setDoInput(true);
-            connection.setDoOutput(true);
 
-            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-            connection.setRequestProperty("apikey", anonKey);
-            connection.setRequestProperty("Authorization", "Bearer " + anonKey);
-            connection.setRequestProperty("Prefer", "return=representation");
-            if (gatewayDeviceId != null) {
-                connection.setRequestProperty("x-gateway-device-id", gatewayDeviceId);
-            }
-
-            JSONObject payloadJson = buildDirectRestPayload(message, gatewayDeviceId);
-            byte[] bodyBytes = payloadJson.toString().getBytes(StandardCharsets.UTF_8);
-
-            try (OutputStream os = connection.getOutputStream()) {
-                os.write(bodyBytes);
-                os.flush();
-            }
+            applyAuthHeaders(connection);
 
             int responseCode = connection.getResponseCode();
-            String responseBody = readStream(responseCode >= 200 && responseCode < 400
+            String body = readStream(responseCode >= 200 && responseCode < 400
                     ? connection.getInputStream()
                     : connection.getErrorStream());
 
-            if (responseCode == 201 || responseCode == 200) {
-                String backendRef = message.getMessageId();
-                try {
-                    if (responseBody.startsWith("[")) {
-                        JSONArray arr = new JSONArray(responseBody);
-                        if (arr.length() > 0) {
-                            JSONObject obj = arr.getJSONObject(0);
-                            backendRef = obj.optString("id", obj.optString("message_id", message.getMessageId()));
-                        }
-                    } else if (responseBody.startsWith("{")) {
-                        JSONObject obj = new JSONObject(responseBody);
-                        backendRef = obj.optString("id", obj.optString("message_id", message.getMessageId()));
-                    }
-                } catch (Exception ignored) {}
-                return UploadResult.success(responseCode, "ACCEPTED", backendRef, responseBody);
-            } else if (responseCode == 409 || (responseBody != null && (responseBody.contains("23505") || responseBody.contains("duplicate key")))) {
-                return UploadResult.duplicateAccepted(responseCode, message.getMessageId(), responseBody);
-            } else if (responseCode == 400) {
-                String error = "VALIDATION_FAILED";
-                String msg = responseBody;
-                try {
-                    JSONObject respJson = new JSONObject(responseBody);
-                    error = respJson.optString("code", error);
-                    msg = respJson.optString("message", msg);
-                } catch (Exception ignored) {}
-                return UploadResult.rejected(responseCode, error, msg);
+            if (responseCode == 200) {
+                return new HealthResult(true, responseCode, body, null);
             } else {
-                return UploadResult.serverError(responseCode, "HTTP " + responseCode + ": " + responseBody);
+                return new HealthResult(false, responseCode, body, "HTTP " + responseCode);
             }
-        } catch (IOException e) {
-            return UploadResult.networkError(e.getMessage() != null ? e.getMessage() : "Network error occurred");
         } catch (Exception e) {
-            return UploadResult.serverError(500, e.getMessage() != null ? e.getMessage() : "Unexpected error");
+            return new HealthResult(false, 0, null, e.getMessage());
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -410,44 +573,6 @@ public class BackendApiClient {
         json.put("payload_hash", computePayloadHash(message));
 
         return json;
-    }
-
-    /**
-     * Checks health directly against PostgREST when Edge Function health endpoint is not found.
-     */
-    @NonNull
-    public HealthResult checkDirectRestHealth() {
-        HttpURLConnection connection = null;
-        try {
-            String endpoint = normalizeUrl(baseUrl) + "/rest/v1/emergency_alerts?select=message_id&limit=1";
-            URL url = new URL(endpoint);
-
-            connection = connectionProvider.openConnection(url);
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
-            connection.setReadTimeout(READ_TIMEOUT_MS);
-            connection.setDoInput(true);
-
-            connection.setRequestProperty("apikey", anonKey);
-            connection.setRequestProperty("Authorization", "Bearer " + anonKey);
-
-            int responseCode = connection.getResponseCode();
-            String body = readStream(responseCode >= 200 && responseCode < 400
-                    ? connection.getInputStream()
-                    : connection.getErrorStream());
-
-            if (responseCode == 200) {
-                return new HealthResult(true, responseCode, body, null);
-            } else {
-                return new HealthResult(false, responseCode, body, "HTTP " + responseCode);
-            }
-        } catch (Exception e) {
-            return new HealthResult(false, 0, null, e.getMessage());
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
     }
 
     public static String computePayloadHash(@NonNull EmergencyMessage message) {
@@ -527,6 +652,14 @@ public class BackendApiClient {
 
         public static UploadResult rejected(int code, String error, String msg) {
             return new UploadResult(false, false, false, code, Constants.UPLOAD_STATUS_REJECTED, null, error + ": " + msg, msg);
+        }
+
+        public static UploadResult securityRejected(int code, String error, String msg) {
+            String friendlyMsg = "Database security policy rejected SOS insertion";
+            if (msg != null && msg.contains("42501")) {
+                friendlyMsg = "Row-level security policy rejected alert insertion (PostgreSQL Error 42501)";
+            }
+            return new UploadResult(false, false, false, code, Constants.UPLOAD_STATUS_REJECTED, null, friendlyMsg + ": " + msg, msg);
         }
 
         public static UploadResult conflict(int code, String error, String msg) {
