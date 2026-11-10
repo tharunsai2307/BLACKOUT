@@ -107,3 +107,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.record_recipient_consent(text, boolean, boolean, text) TO anon, authenticated, service_role;
+

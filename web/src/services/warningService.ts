@@ -2,6 +2,31 @@ import { supabase } from './supabase';
 import { PublicWarning, WarningStatus, WarningSeverity } from '../types/database';
 import { offlineStore, isPlaceholderUrl } from './offlineStore';
 
+export function normalizeCategory(cat: string): string {
+  const c = (cat || '').toUpperCase().replace(/[_\s]+/g, '_');
+  switch (c) {
+    case 'FLOOD':
+      return 'Flood';
+    case 'CYCLONE':
+      return 'Cyclone';
+    case 'HEAVY_RAINFALL':
+      return 'Heavy rainfall';
+    case 'LANDSLIDE':
+      return 'Landslide';
+    case 'EARTHQUAKE':
+      return 'Earthquake';
+    case 'FIRE':
+      return 'Fire';
+    case 'EVACUATION':
+      return 'Evacuation';
+    case 'INFRASTRUCTURE_EMERGENCY':
+      return 'Infrastructure emergency';
+    case 'GENERAL_PUBLIC_SAFETY':
+    default:
+      return 'General public safety';
+  }
+}
+
 export const warningService = {
   async getWarnings(statusFilter?: WarningStatus | 'ALL'): Promise<{
     data: PublicWarning[];
@@ -94,12 +119,14 @@ export const warningService = {
       Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
     const createdByUuid = isValidUuid(params.actor?.id) ? params.actor.id : null;
 
+    const normCategory = normalizeCategory(params.category);
+
     const newWarning: PublicWarning = {
       id: `warn-${Date.now()}`,
       warning_code: warningCode,
       title: params.title.trim(),
       description: params.description.trim(),
-      category: params.category,
+      category: normCategory,
       severity: params.severity,
       affected_area: params.affectedArea.trim(),
       latitude: params.latitude || null,
@@ -126,7 +153,7 @@ export const warningService = {
       const { data: rpcData, error: rpcErr } = await supabase.rpc('create_public_warning', {
         p_title: newWarning.title,
         p_description: newWarning.description,
-        p_category: newWarning.category,
+        p_category: normCategory,
         p_severity: newWarning.severity,
         p_affected_area: newWarning.affected_area,
         p_instructions: newWarning.instructions || null,
@@ -149,13 +176,16 @@ export const warningService = {
           warning_code: warningCode,
           title: newWarning.title,
           description: newWarning.description,
-          category: newWarning.category,
+          category: normCategory,
           severity: newWarning.severity,
           affected_area: newWarning.affected_area,
           instructions: newWarning.instructions,
           status: 'DRAFT',
           created_by: createdByUuid,
           expires_at: params.expiresAt,
+          latitude: newWarning.latitude || null,
+          longitude: newWarning.longitude || null,
+          radius_km: newWarning.radius_km || null,
         })
         .select('*')
         .single();
@@ -163,8 +193,9 @@ export const warningService = {
       if (error) throw error;
       if (data) {
         offlineStore.addWarning(data as PublicWarning);
+        return { data: data as PublicWarning, error: null };
       }
-      return { data: (data as PublicWarning) || newWarning, error: null };
+      return { data: newWarning, error: null };
     } catch (err: any) {
       console.warn('createWarning preserved in offline store:', err.message);
       return { data: newWarning, error: null };
