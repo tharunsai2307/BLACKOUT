@@ -9,14 +9,34 @@
     android:paddingTop="@dimen/spacing_large"
     android:paddingEnd="@dimen/spacing_large">
 
-    <!-- Screen Title -->
-    <TextView
+    <!-- Header with Title and Sync Action -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/alerts_screen_title"
-        android:textColor="@color/text_primary"
-        android:textSize="@dimen/text_size_headline"
-        android:textStyle="bold" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/alerts_screen_title"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_headline"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_sync_alerts"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sync"
+            android:textColor="@color/accent_cyan"
+            android:textSize="12sp"
+            app:icon="@android:drawable/ic_popup_sync"
+            app:iconTint="@color/accent_cyan" />
+
+    </LinearLayout>
 
     <!-- Filter Chips Horizontal Scroll -->
     <HorizontalScrollView
@@ -129,6 +149,17 @@
                     android:text="@string/alerts_empty_desc"
                     android:textColor="@color/text_secondary"
                     android:textSize="@dimen/text_size_body" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_empty_sync"
+                    style="@style/Widget.BLACKOUT.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/spacing_medium"
+                    android:text="Check for Active Broadcasts"
+                    android:textSize="12sp"
+                    app:icon="@android:drawable/ic_popup_sync"
+                    app:iconTint="@color/accent_cyan" />
 
             </LinearLayout>
 

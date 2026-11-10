@@ -27,6 +27,7 @@
 
     <!-- Tactical Cyan / Teal (Connectivity & Radio) -->
     <color name="teal_accent">#00E5FF</color>
+    <color name="accent_cyan">#00E5FF</color>
     <color name="teal_secondary">#06B6D4</color>
     <color name="teal_dark">#0E7490</color>
     <color name="teal_subtle">#082730</color>

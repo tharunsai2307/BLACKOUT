@@ -31,7 +31,6 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
 
     if (status === 'FALSE_REPORT' && !rejectionReason.trim()) {
       setError('A rejection reason is mandatory when declaring an alert as a FALSE REPORT.');
@@ -48,8 +47,8 @@ export const VerificationModal: React.FC<VerificationModalProps> = ({
         operatorNotes: notes.trim() || undefined,
         rejectionReason: status === 'FALSE_REPORT' ? rejectionReason.trim() : undefined,
         actor: {
-          id: user.id,
-          email: user.email || 'operator@blackout.ops',
+          id: user?.id || profile?.id || 'op-operator',
+          email: user?.email || profile?.email || 'operator@blackout.ops',
           role: profile?.role || 'CONTROL_ROOM_OPERATOR',
         },
       });

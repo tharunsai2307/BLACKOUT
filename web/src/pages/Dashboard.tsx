@@ -20,6 +20,7 @@ import {
   Clock,
   ArrowRight,
   ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
@@ -310,43 +311,47 @@ export const Dashboard: React.FC = () => {
             )}
           </Card>
 
-          {/* Tactical Mesh Network 3D Radar HUD */}
-          <Card title="Autonomous Mesh 3D Radar" is3D={true} className="border-t-2 border-t-operations-cyan">
-            <div className="flex flex-col items-center justify-center p-3 relative select-none">
-              <div className="relative w-44 h-44 rounded-full border-2 border-operations-cyan/30 bg-operations-bg/90 flex items-center justify-center shadow-inner shadow-cyan-950/50 overflow-hidden">
-                {/* Concentric distance rings */}
-                <div className="absolute w-32 h-32 rounded-full border border-operations-cyan/20"></div>
-                <div className="absolute w-20 h-20 rounded-full border border-operations-cyan/20"></div>
-                <div className="absolute w-8 h-8 rounded-full border border-operations-cyan/30"></div>
-                {/* Crosshairs */}
-                <div className="absolute w-full h-[1px] bg-operations-cyan/20"></div>
-                <div className="absolute h-full w-[1px] bg-operations-cyan/20"></div>
-
-                {/* Rotating 3D Radar Sweep */}
-                <div
-                  className="absolute inset-0 rounded-full animate-radar-sweep pointer-events-none"
-                  style={{
-                    background: 'conic-gradient(from 0deg, rgba(6, 182, 212, 0.45) 0deg, rgba(6, 182, 212, 0) 65deg, transparent 65deg)',
-                  }}
-                ></div>
-
-                {/* Simulated active mesh nodes & SOS beacon pings */}
-                <div className="absolute top-10 left-12 w-2.5 h-2.5 rounded-full bg-operations-red animate-ping" title="Active SOS Beacon"></div>
-                <div className="absolute top-10 left-12 w-2 h-2 rounded-full bg-operations-red"></div>
-
-                <div className="absolute bottom-12 right-14 w-2 h-2 rounded-full bg-operations-cyan animate-pulse" title="Mesh Relay Gateway"></div>
-                <div className="absolute top-16 right-10 w-1.5 h-1.5 rounded-full bg-operations-green" title="Deployed Response Unit"></div>
-
-                {/* Center Station */}
-                <div className="w-3 h-3 rounded-full bg-operations-cyan shadow-md shadow-cyan-400 z-10"></div>
+          {/* Operational Readiness & Telemetry */}
+          <Card title="Emergency Network Telemetry">
+            <div className="p-3 space-y-3 text-xs">
+              <div className="flex items-center justify-between p-2 rounded bg-operations-bg border border-operations-border">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-operations-green animate-pulse" />
+                  <span className="font-semibold text-white">Cloud Gateway Link</span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-400 border border-emerald-500/30">
+                  CONNECTED
+                </span>
               </div>
 
-              <div className="mt-3 flex items-center justify-between w-full text-[10px] font-mono text-operations-muted">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-operations-cyan animate-ping"></span>
-                  RANGE: 100 KM
-                </span>
-                <span className="text-operations-cyan font-bold tracking-wider">P2P CLUSTER ACTIVE</span>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="p-2.5 rounded bg-operations-bg border border-operations-border">
+                  <div className="text-[10px] uppercase text-operations-muted font-semibold">Active Units</div>
+                  <div className="text-lg font-bold font-mono text-operations-cyan mt-0.5">
+                    {availableTeamsCount} / {teams.length}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-operations-bg border border-operations-border">
+                  <div className="text-[10px] uppercase text-operations-muted font-semibold">Broadcasts</div>
+                  <div className="text-lg font-bold font-mono text-operations-amber mt-0.5">
+                    {activeWarnings.length}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-operations-border/60 flex flex-col gap-2">
+                <Link to="/warnings" className="w-full">
+                  <Button variant="secondary" size="sm" className="w-full justify-center">
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-operations-cyan" />
+                    Issue Civil Warning
+                  </Button>
+                </Link>
+                <Link to="/map" className="w-full">
+                  <Button variant="ghost" size="sm" className="w-full justify-center border border-operations-border">
+                    <MapPin className="w-3.5 h-3.5 mr-1.5 text-operations-muted" />
+                    View Geospatial Map
+                  </Button>
+                </Link>
               </div>
             </div>
           </Card>

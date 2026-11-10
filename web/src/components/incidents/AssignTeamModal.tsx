@@ -56,7 +56,7 @@ export const AssignTeamModal: React.FC<AssignTeamModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !selectedTeamId) return;
+    if (!selectedTeamId) return;
 
     try {
       setIsSubmitting(true);
@@ -64,8 +64,8 @@ export const AssignTeamModal: React.FC<AssignTeamModalProps> = ({
 
       const targetTeam = teams.find((t) => t.id === selectedTeamId);
       const actor = {
-        id: user.id,
-        email: user.email || 'operator@blackout.ops',
+        id: user?.id || profile?.id || 'op-operator',
+        email: user?.email || profile?.email || 'operator@blackout.ops',
         role: profile?.role || 'CONTROL_ROOM_OPERATOR',
       };
 

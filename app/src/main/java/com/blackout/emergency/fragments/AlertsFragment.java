@@ -20,6 +20,11 @@ import com.blackout.emergency.warnings.models.PublicWarning;
 import com.blackout.emergency.warnings.relay.WarningRelayManager;
 import com.blackout.emergency.warnings.sync.WarningSyncWorker;
 import com.blackout.emergency.warnings.ui.WarningDetailDialog;
+import com.blackout.emergency.warnings.sync.WarningApiClient;
+import com.blackout.emergency.warnings.models.TrustedSigningKey;
+import com.blackout.emergency.warnings.notifications.WarningNotificationManager;
+import android.widget.Toast;
+import android.content.Context;
 import com.google.android.material.chip.ChipGroup;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,6 +95,15 @@ public class AlertsFragment extends Fragment {
         recyclerAlerts = view.findViewById(R.id.recycler_alerts);
         layoutEmptyState = view.findViewById(R.id.layout_alerts_empty);
         ChipGroup chipGroupFilter = view.findViewById(R.id.chip_group_alerts_filter);
+        View btnSync = view.findViewById(R.id.btn_sync_alerts);
+        View btnEmptySync = view.findViewById(R.id.btn_empty_sync);
+
+        if (btnSync != null) {
+            btnSync.setOnClickListener(v -> syncWarningsNow(true));
+        }
+        if (btnEmptySync != null) {
+            btnEmptySync.setOnClickListener(v -> syncWarningsNow(true));
+        }
 
         // RecyclerView setup
         recyclerAlerts.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -126,6 +140,7 @@ public class AlertsFragment extends Fragment {
 
         // Enqueue background network download if connectivity is present
         WarningSyncWorker.enqueueOneTimeSync(requireContext());
+        syncWarningsNow(false);
 
         // Initial sweep and database load
         expiryManager.sweepExpiredWarnings(this::loadWarningsFromDatabase);
@@ -135,6 +150,49 @@ public class AlertsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         loadWarningsFromDatabase();
+        syncWarningsNow(false);
+    }
+
+    public void syncWarningsNow(boolean userInitiated) {
+        if (getContext() == null) return;
+        Context context = requireContext().getApplicationContext();
+
+        new Thread(() -> {
+            try {
+                WarningApiClient client = new WarningApiClient(context);
+                try {
+                    List<TrustedSigningKey> keys = client.fetchTrustedKeys();
+                    if (!keys.isEmpty()) {
+                        warningRepository.persistKeys(keys);
+                    }
+                } catch (Exception ignored) {}
+
+                List<PublicWarning> warnings = client.fetchActiveWarnings();
+                if (!warnings.isEmpty()) {
+                    for (PublicWarning w : warnings) {
+                        warningRepository.processAndStoreWarning(w, (res, saved, msg) -> {
+                            if (saved != null && saved.isAuthenticAndVerified()) {
+                                WarningNotificationManager.getInstance(context).notifyWarning(saved);
+                            }
+                        });
+                    }
+                }
+
+                postToMain(() -> {
+                    loadWarningsFromDatabase();
+                    if (userInitiated && getContext() != null) {
+                        Toast.makeText(context, "Public warnings updated: " + warnings.size() + " active broadcast(s)", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } catch (Exception e) {
+                postToMain(() -> {
+                    loadWarningsFromDatabase();
+                    if (userInitiated && getContext() != null) {
+                        Toast.makeText(context, "Mesh warning sync complete", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        }).start();
     }
 
     @Override

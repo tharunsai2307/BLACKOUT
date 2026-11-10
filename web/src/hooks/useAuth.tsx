@@ -35,6 +35,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(session.user);
           const prof = await authService.getUserProfile(session.user.id, session.user.email);
           if (mounted) setProfile(prof);
+        } else {
+          const localUser = await authService.getCurrentUser();
+          if (localUser && mounted) {
+            setUser(localUser as any);
+            const prof = await authService.getUserProfile(localUser.id, localUser.email);
+            if (mounted) setProfile(prof);
+          }
         }
       } catch (err) {
         console.error('Failed to initialize auth state:', err);
@@ -105,7 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       profile,
       role,
       loading,
-      isAuthenticated: !!user,
+      isAuthenticated: !!user || !!profile,
       login,
       logout,
       hasRole,

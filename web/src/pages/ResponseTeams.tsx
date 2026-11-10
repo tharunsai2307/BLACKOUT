@@ -48,11 +48,10 @@ export const ResponseTeams: React.FC = () => {
   }, []);
 
   const handleStatusChange = async (teamId: string, newStatus: TeamStatus) => {
-    if (!user) return;
     try {
       const actor = {
-        id: user.id,
-        email: user.email || 'operator@blackout.ops',
+        id: user?.id || profile?.id || 'op-operator',
+        email: user?.email || profile?.email || 'operator@blackout.ops',
         role: profile?.role || 'CONTROL_ROOM_OPERATOR',
       };
       const res = await teamService.updateTeamStatus(teamId, newStatus, actor);

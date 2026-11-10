@@ -106,7 +106,7 @@ export const analyticsService = {
       try {
         const dateStr = a.created_at.split('T')[0];
         dailyMap[dateStr] = (dailyMap[dateStr] || 0) + 1;
-      } catch (ignored) {}
+      } catch (ignored) { }
     }
 
     const dailyTrend = Object.keys(dailyMap)

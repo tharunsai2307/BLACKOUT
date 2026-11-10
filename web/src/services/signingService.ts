@@ -212,10 +212,14 @@ export const signingService = {
   ): Promise<{ data: any; error: string | null }> {
     try {
       // Phase 8 RBAC Authorization Enforcement
-      if (actor.role !== 'SUPER_ADMIN' && actor.role !== 'PUBLIC_WARNING_PUBLISHER') {
+      if (
+        actor.role !== 'SUPER_ADMIN' &&
+        actor.role !== 'PUBLIC_WARNING_PUBLISHER' &&
+        actor.role !== 'CONTROL_ROOM_OPERATOR'
+      ) {
         return {
           data: null,
-          error: 'FORBIDDEN: Only SUPER_ADMIN and PUBLIC_WARNING_PUBLISHER can digitally sign warnings.',
+          error: 'FORBIDDEN: Only SUPER_ADMIN, PUBLIC_WARNING_PUBLISHER, and CONTROL_ROOM_OPERATOR can digitally sign warnings.',
         };
       }
       // 1. Try invoking Supabase Edge Function
@@ -299,6 +303,28 @@ export const signingService = {
       const signatureBase64 = bytesToBase64(new Uint8Array(signatureBuffer));
 
       const publishedIso = new Date(issuedAtMillis).toISOString();
+
+      // Try secure stored procedure RPC first
+      try {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('publish_and_sign_warning', {
+          p_warning_id: warningId,
+          p_signature: signatureBase64,
+          p_canonical_payload: canonicalStr,
+          p_signing_key_id: keyId,
+        });
+        if (!rpcErr && rpcRes) {
+          return {
+            data: {
+              warning: rpcRes,
+              signature: signatureBase64,
+              signingKeyId: keyId,
+            },
+            error: null,
+          };
+        }
+      } catch (rpcEx) {
+        console.warn('publish_and_sign_warning RPC fallback to table update:', rpcEx);
+      }
 
       // Persist signed warning
       const { data: updatedWarning, error: updateErr } = await supabase

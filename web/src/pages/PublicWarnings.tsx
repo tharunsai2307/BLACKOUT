@@ -44,6 +44,7 @@ export const PublicWarnings: React.FC = () => {
   const [longitude, setLongitude] = useState<number | ''>(80.2707);
   const [radiusKm, setRadiusKm] = useState<number | ''>(5.0);
   const [durationHours, setDurationHours] = useState(24);
+  const [publishDirectly, setPublishDirectly] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Preview & Sign Modal
@@ -122,9 +123,17 @@ export const PublicWarnings: React.FC = () => {
 
       if (res.error) throw new Error(res.error);
 
+      if (publishDirectly && res.data) {
+        try {
+          await signingService.signAndPublishWarning(res.data.id, actor);
+        } catch (signErr: any) {
+          console.warn('Direct sign after create failed, created as draft:', signErr.message);
+        }
+      }
+
       setIsCreateOpen(false);
       resetForm();
-      loadWarnings();
+      await loadWarnings();
     } catch (err: any) {
       alert(`Failed to create warning: ${err.message}`);
     } finally {
@@ -143,15 +152,16 @@ export const PublicWarnings: React.FC = () => {
     setLongitude(80.2707);
     setRadiusKm(5.0);
     setDurationHours(24);
+    setPublishDirectly(true);
   };
 
   const handleSignAndPublish = async () => {
-    if (!previewWarning || !user) return;
+    if (!previewWarning) return;
     try {
       setIsSigning(true);
       const actor = {
-        id: user.id,
-        email: user.email || 'publisher@blackout.ops',
+        id: user?.id || profile?.id || 'op-publisher',
+        email: user?.email || profile?.email || 'publisher@blackout.ops',
         role: profile?.role || 'PUBLIC_WARNING_PUBLISHER',
       };
 
@@ -159,7 +169,7 @@ export const PublicWarnings: React.FC = () => {
       if (res.error) throw new Error(res.error);
 
       setPreviewWarning(null);
-      loadWarnings();
+      await loadWarnings();
     } catch (err: any) {
       alert(`Signing and publishing failed: ${err.message}`);
     } finally {
@@ -176,10 +186,9 @@ export const PublicWarnings: React.FC = () => {
   };
 
   const handleWorkflowAction = async (warning: PublicWarning, action: 'submit' | 'approve' | 'sign_publish' | 'revoke') => {
-    if (!user) return;
     const actor = {
-      id: user.id,
-      email: user.email || 'operator@blackout.ops',
+      id: user?.id || profile?.id || 'op-operator',
+      email: user?.email || profile?.email || 'operator@blackout.ops',
       role: profile?.role || 'CONTROL_ROOM_OPERATOR',
     };
 
@@ -187,11 +196,11 @@ export const PublicWarnings: React.FC = () => {
       if (action === 'submit') {
         const res = await warningService.submitForApproval(warning.id, actor);
         if (res.error) throw new Error(res.error);
-        loadWarnings();
+        await loadWarnings();
       } else if (action === 'approve') {
         const res = await warningService.approveWarning(warning.id, actor);
         if (res.error) throw new Error(res.error);
-        loadWarnings();
+        await loadWarnings();
       } else if (action === 'sign_publish') {
         // Open preview & confirmation dialog before cryptographic signing
         setPreviewWarning(warning);
@@ -200,7 +209,7 @@ export const PublicWarnings: React.FC = () => {
         if (!reason || !reason.trim()) return;
         const res = await signingService.revokeWarning(warning.id, reason.trim(), actor);
         if (res.error) throw new Error(res.error);
-        loadWarnings();
+        await loadWarnings();
       }
     } catch (err: any) {
       alert(`Action failed: ${err.message}`);
@@ -656,12 +665,31 @@ export const PublicWarnings: React.FC = () => {
             </div>
           </div>
 
+          <div className="p-3 bg-operations-surface border border-operations-border rounded flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-operations-cyan" />
+                Sign and Broadcast Immediately
+              </span>
+              <p className="text-[10px] text-operations-muted">
+                Digitally sign with Ed25519 root key and broadcast to all active mobile devices immediately.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={publishDirectly}
+              onChange={(e) => setPublishDirectly(e.target.checked)}
+              className="w-4 h-4 rounded text-operations-cyan focus:ring-operations-cyan border-operations-border bg-operations-bg cursor-pointer"
+            />
+          </div>
+
           <div className="flex justify-end space-x-2 pt-2 border-t border-operations-border">
             <Button variant="ghost" type="button" onClick={() => setIsCreateOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button type="submit" loading={isSubmitting} variant="primary">
-              Save Warning Draft
+              <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />
+              {publishDirectly ? 'Sign & Broadcast Now' : 'Save as Draft'}
             </Button>
           </div>
         </form>
