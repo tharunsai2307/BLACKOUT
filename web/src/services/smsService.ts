@@ -125,6 +125,22 @@ class SmsService {
     source = 'OPERATOR_VERIFIED'
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // 1. Try secure stored procedure RPC (SECURITY DEFINER)
+      try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('record_recipient_consent', {
+          p_phone_number: phone,
+          p_has_emergency_consent: hasEmergencyConsent,
+          p_has_warning_consent: hasWarningConsent,
+          p_source: source,
+        });
+        if (!rpcErr && rpcData) {
+          return { success: true };
+        }
+      } catch (rpcEx) {
+        console.warn('record_recipient_consent RPC fallback to table upsert:', rpcEx);
+      }
+
+      // 2. Direct table upsert fallback
       const { error } = await supabase
         .from('sms_recipient_preferences')
         .upsert({
