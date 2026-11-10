@@ -273,3 +273,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.dispatch_emergency_sms_rpc(text, text, text, jsonb, uuid, uuid, text, text) TO anon, authenticated, service_role;
+

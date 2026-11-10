@@ -10,6 +10,7 @@ import { EmergencyMap } from '../components/map/EmergencyMap';
 import { VerificationModal } from '../components/incidents/VerificationModal';
 import { AssignTeamModal } from '../components/incidents/AssignTeamModal';
 import { DispatchSmsModal } from '../components/incidents/DispatchSmsModal';
+import { supabase } from '../services/supabase';
 import { geoapifyService, GeocodedAddress } from '../services/geoapifyService';
 import { smsService, SmsNotificationRecord } from '../services/smsService';
 import { formatCoordinates, formatDateTime, formatRelativeTime } from '../utils/formatters';
@@ -63,6 +64,23 @@ export const IncidentDetails: React.FC = () => {
 
       // Check if alert already has geocoded info or auto-enrich if coordinates exist
       if (res.alert && res.alert.latitude != null && res.alert.longitude != null) {
+        if (res.alert.geocoded_address) {
+          setGeocoded({
+            formatted: res.alert.geocoded_address,
+            locality: res.alert.geocoded_locality,
+            city: (res.alert as any).geocoded_city || null,
+            district: res.alert.geocoded_district,
+            state: res.alert.geocoded_state,
+            country: res.alert.geocoded_country,
+            postalCode: res.alert.geocoded_postal_code,
+            confidence: res.alert.geocoded_confidence ?? 0.9,
+            isApproximate: res.alert.geocoded_is_approximate ?? true,
+            originalCoordinates: {
+              latitude: res.alert.latitude,
+              longitude: res.alert.longitude,
+            },
+          });
+        }
         enrichLocation(res.alert.latitude, res.alert.longitude);
       }
     } catch (err: any) {
@@ -78,7 +96,31 @@ export const IncidentDetails: React.FC = () => {
       setIsGeocoding(true);
       setGeocodingError(null);
       const geo = await geoapifyService.reverseGeocode(lat, lon);
-      setGeocoded(geo);
+      if (geo) {
+        setGeocoded(geo);
+
+        // Persist reverse geocoded address to database
+        if (id) {
+          supabase
+            .from('emergency_alerts')
+            .update({
+              geocoded_address: geo.formatted,
+              geocoded_locality: geo.locality,
+              geocoded_district: geo.district,
+              geocoded_state: geo.state,
+              geocoded_country: geo.country,
+              geocoded_postal_code: geo.postalCode,
+              geocoded_is_approximate: true,
+              geocoded_confidence: geo.confidence,
+              geocoded_at: new Date().toISOString(),
+            })
+            .eq('id', id)
+            .then(
+              () => {},
+              (dbErr: any) => console.warn('Could not persist geocoded address:', dbErr.message)
+            );
+        }
+      }
     } catch (err: any) {
       setGeocodingError(err.message || 'Reverse geocoding unavailable');
     } finally {

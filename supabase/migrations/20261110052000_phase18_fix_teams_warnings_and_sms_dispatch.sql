@@ -157,3 +157,4 @@ GRANT EXECUTE ON FUNCTION public.create_public_warning(text, text, text, text, t
 GRANT EXECUTE ON FUNCTION public.publish_and_sign_warning(uuid, text, text, text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.record_recipient_consent(text, boolean, boolean, text) TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.dispatch_emergency_sms_rpc(text, text, text, jsonb, uuid, uuid, text, text) TO anon, authenticated, service_role;
+

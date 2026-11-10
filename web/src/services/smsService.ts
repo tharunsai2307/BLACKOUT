@@ -126,18 +126,20 @@ class SmsService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // 1. Try secure stored procedure RPC (SECURITY DEFINER)
-      try {
-        const { data: rpcData, error: rpcErr } = await supabase.rpc('record_recipient_consent', {
-          p_phone_number: phone,
-          p_has_emergency_consent: hasEmergencyConsent,
-          p_has_warning_consent: hasWarningConsent,
-          p_source: source,
-        });
-        if (!rpcErr && rpcData) {
-          return { success: true };
+      if (typeof (supabase as any).rpc === 'function') {
+        try {
+          const { data: rpcData, error: rpcErr } = await supabase.rpc('record_recipient_consent', {
+            p_phone_number: phone,
+            p_has_emergency_consent: hasEmergencyConsent,
+            p_has_warning_consent: hasWarningConsent,
+            p_source: source,
+          });
+          if (!rpcErr && rpcData) {
+            return { success: true };
+          }
+        } catch (rpcEx) {
+          console.warn('record_recipient_consent RPC fallback to table upsert:', rpcEx);
         }
-      } catch (rpcEx) {
-        console.warn('record_recipient_consent RPC fallback to table upsert:', rpcEx);
       }
 
       // 2. Direct table upsert fallback
@@ -149,7 +151,7 @@ class SmsService {
           has_public_warning_consent: hasWarningConsent,
           verification_status: 'VERIFIED',
           consent_source: source,
-          consent_timestamp: new Date().toISOString(),
+          consent_timestamp: new Date().toISOString(), 
           updated_at: new Date().toISOString(),
         }, { onConflict: 'phone_number' });
 
@@ -200,22 +202,30 @@ class SmsService {
 
       // 1. If active Supabase session token exists, try invoking notifications-sms Edge Function
       if (token) {
-        try {
-          const { data, error } = await supabase.functions.invoke('notifications-sms', {
-            body: payload,
-          });
+        const { data, error } = await supabase.functions.invoke('notifications-sms', {
+          body: payload,
+        });
 
-          if (!error && data && data.success) {
-            return {
-              success: true,
-              requestId: data.requestId,
-              status: data.status,
-              provider: data.provider || 'TWILIO_SMS',
-              messagePreview: data.messagePreview,
-            };
-          }
-        } catch (edgeEx) {
-          console.warn('Edge function invoke fallback to Twilio DB RPC:', edgeEx);
+        if (error) {
+          return { success: false, error: error.message || 'SMS service invocation failed' };
+        }
+
+        if (data && !data.success) {
+          return {
+            success: false,
+            error: data.error,
+            status: data.status,
+          };
+        }
+
+        if (data && data.success) {
+          return {
+            success: true,
+            requestId: data.requestId,
+            status: data.status,
+            provider: data.provider || 'TWILIO_SMS',
+            messagePreview: data.messagePreview,
+          };
         }
       }
 

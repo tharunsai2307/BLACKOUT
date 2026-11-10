@@ -260,6 +260,11 @@ export const Incidents: React.FC = () => {
 
                     <td className="py-3 px-4 whitespace-nowrap">
                       <div className="text-[11px] text-operations-muted space-y-0.5">
+                        {incident.geocoded_address ? (
+                          <p className="text-operations-cyan font-sans text-xs truncate max-w-[220px]" title={incident.geocoded_address}>
+                            {incident.geocoded_address}
+                          </p>
+                        ) : null}
                         <p className="text-white font-mono">
                           {formatCoordinates(incident.latitude, incident.longitude, incident.accuracy_meters)}
                         </p>

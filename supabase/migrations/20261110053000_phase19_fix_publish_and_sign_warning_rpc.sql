@@ -92,3 +92,4 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.publish_and_sign_warning(uuid, text, text, text) TO anon, authenticated, service_role;
+
